@@ -1,0 +1,1 @@
+ALTER TABLE `credits` ADD `allotment` integer DEFAULT 100 NOT NULL;

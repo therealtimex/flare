@@ -1,0 +1,36 @@
+<!-- @dsCard height=288 -->
+<style>
+  body { margin: 0; background: var(--surface-0); }
+  .cover { position: relative; width: 960px; height: 288px; overflow: hidden; background: var(--surface-0); }
+  .cover svg { position: absolute; inset: 0; }
+  .ink { fill: var(--ink); }
+  .fl { fill: var(--flare); }
+  .fls { fill: var(--flare-strong); }
+  .text { position: absolute; left: 40px; bottom: 32px; max-width: 440px; display: grid; gap: var(--space-3); }
+  .name { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 120px; line-height: 0.92; letter-spacing: -0.02em; color: var(--ink); }
+  .tag { margin: 0; font-family: var(--font-sans); font-size: 14px; line-height: 20px; color: var(--ink-muted); }
+</style>
+<div class="cover">
+  <svg width="960" height="288" viewBox="0 0 960 288" aria-hidden="true">
+    <!--
+      blocks: ink stem 64x240 + ink top bar 224x64 (space-16 tall), flare-strong mid bar 160x48 (space-12 tall), flare disc r48 (radius-full)
+      arrangement: the Flare mark scaled up, the funnel stem bleeding off the bottom edge, the disc space-8 clear of the top bar
+      pattern: literal motif, the spark trail: six radius-full discs stepping down from the disc, the lead leaving the funnel
+      scales: space-8 32px gap, space-12 48px, space-16 64px, trail pitch space-6 24px; radius-full on every disc
+    -->
+    <rect class="ink" x="544" y="48" width="64" height="240"/>
+    <rect class="ink" x="544" y="48" width="224" height="64"/>
+    <rect class="fls" x="544" y="144" width="160" height="48"/>
+    <circle class="fl" cx="848" cy="80" r="48"/>
+    <circle class="fl" cx="872" cy="160" r="8"/>
+    <circle class="fl" cx="885" cy="184" r="7"/>
+    <circle class="fl" cx="898" cy="208" r="6"/>
+    <circle class="fl" cx="911" cy="232" r="5"/>
+    <circle class="fl" cx="924" cy="256" r="4"/>
+    <circle class="fl" cx="937" cy="280" r="3"/>
+  </svg>
+  <div class="text">
+    <h1 class="name">Flare</h1>
+    <p class="tag">Plain-language intake to cited leads, human-approved outreach and pipeline.</p>
+  </div>
+</div>
