@@ -1,10 +1,22 @@
 @import "tailwindcss";
 
+/* Design tokens. Owned by Jay (Flare Design System) from U2 on; ui-dev uses the
+   semantic names below and never raw palette classes or hex values. */
 @theme {
   --font-serif: ui-serif, Georgia, "Times New Roman", serif;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
   --color-flare: #ff5a1f;
+
+  /* Semantic bridge (mapped to the U1 palette) */
+  --color-surface: #0a0a0a;
+  --color-surface-raised: #171717;
+  --color-border-subtle: #262626;
+  --color-muted: #a3a3a3;
+  --color-accent: #ff5a1f;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
 }
 
 :root {
@@ -12,5 +24,5 @@
 }
 
 body {
-  @apply bg-neutral-950 text-neutral-100 font-sans antialiased;
+  @apply bg-surface text-neutral-100 font-sans antialiased;
 }

@@ -46,7 +46,7 @@ export function sourceLabel(url: string): string {
 }
 
 /** Fallback brief when POST /api/runs can't dispatch the terminal agent. */
-export function renderFallbackBrief(productId: string, baseUrl: string): string {
+export function renderFallbackBrief(productId: number | string, baseUrl: string): string {
   return [
     `Run the Flare GTM agent for product ${productId}.`,
     ``,
