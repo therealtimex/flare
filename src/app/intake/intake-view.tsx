@@ -2,7 +2,7 @@
 import { Check, Copy, Loader2, Play, Send, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/page-header";
-import { runGtmAgent, saveProduct } from "@/lib/client/api";
+import { runGtmAgent, saveProduct, type ProductInput } from "@/lib/client/api";
 import { useProduct } from "@/lib/client/hooks";
 import type { RunResult } from "@/lib/client/views";
 import type { Product } from "@/lib/types";
@@ -11,10 +11,12 @@ import { cn } from "@/lib/utils";
 type ChatMsg = { from: "you" | "flare"; text: string };
 
 /** Editable form state: Product with pricing/customers as plain text. */
-type Form = Omit<Product, "pricing" | "customers"> & { pricing: string; customers: string };
-const toForm = (p: Product): Form => ({ ...p, pricing: p.pricing ?? "", customers: p.customers.join("\n") });
-const fromForm = (f: Form): Product => ({
-  ...f,
+type Form = { id: number | null; name: string; description: string; pricing: string; customers: string };
+const EMPTY: Form = { id: null, name: "", description: "", pricing: "", customers: "" };
+const toForm = (p: Product): Form => ({ id: p.id, name: p.name, description: p.description, pricing: p.pricing ?? "", customers: p.customers.join("\n") });
+const fromForm = (f: Form): ProductInput => ({
+  name: f.name.trim(),
+  description: f.description,
   pricing: f.pricing.trim() || null,
   customers: f.customers
     .split(/[\n,]/)
@@ -23,10 +25,10 @@ const fromForm = (f: Form): Product => ({
 });
 
 const inputCls =
-  "w-full rounded-sm border border-border-subtle bg-surface-raised px-2.5 py-1.5 text-sm placeholder:text-muted/50 focus:border-accent focus:outline-none";
+  "w-full rounded-md border border-line bg-surface-1 px-3 py-2 text-sm placeholder:text-ink-faint focus:border-line-strong focus:outline-2 focus:outline-offset-2 focus:outline-flare";
 
 export function IntakeView() {
-  const { data: loaded } = useProduct();
+  const { data: loaded, loading } = useProduct();
   const [form, setForm] = useState<Form | null>(null);
   const [saved, setSaved] = useState(false);
   const [chat, setChat] = useState<ChatMsg[]>([
@@ -35,16 +37,17 @@ export function IntakeView() {
   const [draft, setDraft] = useState("");
   const [run, setRun] = useState<{ state: "idle" | "running" } | { state: "done"; result: RunResult }>({ state: "idle" });
   const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (loaded && !form) setForm(toForm(loaded));
-  }, [loaded, form]);
+    if (!form && !loading) setForm(loaded ? toForm(loaded) : EMPTY);
+  }, [loaded, loading, form]);
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ block: "nearest" });
   }, [chat]);
 
-  if (!form) return <p className="p-6 font-mono text-xs text-muted">Loading product…</p>;
+  if (!form) return <p className="body-sm p-6 text-ink-muted">Loading product…</p>;
 
   const set = (k: "name" | "description" | "pricing" | "customers") => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [k]: e.target.value });
@@ -61,20 +64,34 @@ export function IntakeView() {
     setDraft("");
   }
 
+  async function persist(f: Form): Promise<number> {
+    const p = await saveProduct(f.id, fromForm(f));
+    setForm({ ...f, id: p.id });
+    setSaved(true);
+    return p.id;
+  }
+
   async function onSave() {
     if (!form) return;
-    await saveProduct(fromForm(form));
-    setSaved(true);
+    setErr(null);
+    try {
+      await persist(form);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    }
   }
 
   async function onRun() {
     if (!form) return;
     setRun({ state: "running" });
     setCopied(false);
-    await saveProduct(fromForm(form));
-    setSaved(true);
-    const result = await runGtmAgent(form.id, window.location.origin);
-    setRun({ state: "done", result });
+    setErr(null);
+    try {
+      const id = await persist(form);
+      setRun({ state: "done", result: await runGtmAgent(id, window.location.origin) });
+    } catch (e) {
+      setRun({ state: "done", result: { ok: false, error: e instanceof Error ? e.message : String(e) } });
+    }
   }
 
   async function copyBrief(brief: string) {
@@ -90,11 +107,11 @@ export function IntakeView() {
 
   return (
     <div>
-      <PageHeader kicker="01 · Intake" title="What are you selling?">
+      <PageHeader kicker="Step 1 · Intake" title="What are you selling?" lede="Describe your product in plain words. Flare infers your ideal customer profile (ICP), then finds cited leads.">
         <button
           type="button"
           onClick={onSave}
-          className="rounded-sm border border-border-subtle px-3 py-1.5 font-mono text-xs text-current hover:text-accent"
+          className="fl-btn fl-btn--secondary"
         >
           {saved ? "Saved" : "Save draft"}
         </button>
@@ -102,26 +119,31 @@ export function IntakeView() {
           type="button"
           onClick={onRun}
           disabled={!canRun || run.state === "running"}
-          className="inline-flex items-center gap-1.5 rounded-sm bg-accent px-3 py-1.5 font-mono text-xs font-semibold text-surface hover:brightness-110 disabled:opacity-40"
+          className="fl-btn fl-btn--primary"
           data-testid="run-gtm-agent"
         >
-          {run.state === "running" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Play className="size-3.5" aria-hidden />}
+          {run.state === "running" ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
           Run GTM agent
         </button>
       </PageHeader>
 
+      {err && (
+        <p className="body-sm px-6 pb-3 text-negative" role="alert">
+          {err}
+        </p>
+      )}
       {run.state === "done" && <RunBanner result={run.result} copied={copied} onCopy={copyBrief} />}
 
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <section className="border-b border-border-subtle p-6 lg:border-b-0 lg:border-r" aria-label="Product brief">
-          <h3 className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted">Product brief</h3>
+        <section className="border-y border-line p-6 lg:border-r" aria-label="Product brief">
+          <h3 className="label mb-3 text-ink-muted">Product brief</h3>
           <div className="grid gap-3">
             <label className="grid gap-1">
-              <span className="text-xs text-muted">Name</span>
+              <span className="text-xs text-ink-muted">Name</span>
               <input className={inputCls} value={form.name} onChange={set("name")} placeholder="Acme Billing" name="name" />
             </label>
             <label className="grid gap-1">
-              <span className="text-xs text-muted">Description</span>
+              <span className="text-xs text-ink-muted">Description</span>
               <textarea
                 className={cn(inputCls, "min-h-36 resize-y leading-relaxed")}
                 value={form.description}
@@ -131,11 +153,11 @@ export function IntakeView() {
               />
             </label>
             <label className="grid gap-1">
-              <span className="text-xs text-muted">Pricing</span>
+              <span className="text-xs text-ink-muted">Pricing</span>
               <input className={inputCls} value={form.pricing} onChange={set("pricing")} placeholder="$99/mo per seat" name="pricing" />
             </label>
             <label className="grid gap-1">
-              <span className="text-xs text-muted">Current customers</span>
+              <span className="text-xs text-ink-muted">Current customers</span>
               <textarea
                 className={cn(inputCls, "min-h-16 resize-y")}
                 value={form.customers}
@@ -147,15 +169,15 @@ export function IntakeView() {
           </div>
         </section>
 
-        <section className="flex min-h-96 flex-col p-6" aria-label="Describe in plain words">
-          <h3 className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted">Describe in plain words</h3>
-          <div className="flex-1 space-y-2 overflow-y-auto rounded-sm border border-border-subtle bg-surface-raised/40 p-3" data-testid="intake-chat">
+        <section className="flex min-h-96 flex-col border-y border-line p-6" aria-label="Describe in plain words">
+          <h3 className="label mb-3 text-ink-muted">Describe in plain words</h3>
+          <div className="flex-1 space-y-2 overflow-y-auto rounded-lg border border-line bg-surface-1 p-3" data-testid="intake-chat">
             {chat.map((m, i) => (
               <div key={i} className={cn("flex", m.from === "you" ? "justify-end" : "justify-start")}>
                 <p
                   className={cn(
                     "max-w-[85%] whitespace-pre-wrap rounded-md px-3 py-2 text-sm leading-snug",
-                    m.from === "you" ? "bg-muted text-surface" : "bg-border-subtle",
+                    m.from === "you" ? "bg-surface-2 text-ink" : "border border-line text-ink-muted",
                   )}
                 >
                   {m.text}
@@ -175,10 +197,10 @@ export function IntakeView() {
             <button
               type="submit"
               disabled={!draft.trim()}
-              className="inline-flex items-center rounded-sm border border-border-subtle px-2.5 text-current hover:text-accent disabled:opacity-40"
+              className="fl-btn fl-btn--secondary"
               aria-label="Send"
             >
-              <Send className="size-4" />
+              <Send aria-hidden />
             </button>
           </form>
         </section>
@@ -190,36 +212,37 @@ export function IntakeView() {
 function RunBanner({ result, copied, onCopy }: { result: RunResult; copied: boolean; onCopy: (brief: string) => void }) {
   if (!result.ok) {
     return (
-      <div className="flex items-center gap-2 border-b border-danger/40 bg-danger/10 px-6 py-3 text-sm text-danger" role="alert">
+      <div className="mx-6 mb-4 flex items-center gap-2 rounded-lg border border-line bg-surface-1 px-4 py-3 text-sm" role="alert">
+        <span className="fl-badge fl-badge--negative">Blocked</span>
         <TriangleAlert className="size-4" aria-hidden /> {result.error}
       </div>
     );
   }
   if (result.mode === "dispatched") {
     return (
-      <div className="flex items-center gap-2 border-b border-success/40 bg-success/10 px-6 py-3 text-sm text-success" role="status">
-        <Check className="size-4" aria-hidden /> Agent dispatched to the <code className="font-mono">flare-agent</code> thread. Watch Agent
+      <div className="mx-6 mb-4 flex items-center gap-2 rounded-lg border border-line bg-surface-1 px-4 py-3 text-sm" role="status">
+        <span className="fl-badge fl-badge--positive">Dispatched</span> Agent dispatched to the <code className="font-mono">flare-agent</code> thread. Watch Agent
         Thinking for live tool calls.
       </div>
     );
   }
   return (
-    <div className="border-b border-warning/40 bg-warning/20 px-6 py-3" role="status" data-testid="run-fallback">
+    <div className="mx-6 mb-4 rounded-lg border border-line bg-surface-1 px-4 py-3" role="status" data-testid="run-fallback">
       <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-warning">
-          <span className="font-semibold">Brief ready, copy it to your agent.</span>{" "}
-          <span className="text-warning/70">({result.reason})</span>
+        <p className="text-sm">
+          <span className="fl-badge fl-badge--caution">Fallback</span> <span className="font-semibold">Brief ready, copy it to your agent.</span>{" "}
+          <span className="text-ink-muted">({result.reason})</span>
         </p>
         <button
           type="button"
           onClick={() => onCopy(result.brief)}
-          className="inline-flex items-center gap-1.5 rounded-sm border border-warning/40 px-2.5 py-1 font-mono text-xs text-warning hover:bg-warning/10"
+          className="fl-btn fl-btn--secondary fl-btn--sm"
         >
-          {copied ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
+          {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
           {copied ? "Copied" : "Copy brief"}
         </button>
       </div>
-      <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-sm bg-surface p-3 font-mono text-xs">
+      <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-line bg-surface-0 p-3 font-mono text-xs">
         {result.brief}
       </pre>
     </div>

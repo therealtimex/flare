@@ -53,5 +53,4 @@ export const useIcp = (productId: number | undefined) =>
 export const useActivity = (pollMs = 2000) => useResource(() => api.listActivity(50), { pollMs });
 export const useCredits = (pollMs = 5000) => useResource(api.getCredits, { pollMs });
 export const useLeads = () => useResource(api.listLeads);
-export const useQuarantine = () => useResource(api.getQuarantineCounts);
 export const useOutbox = () => useResource(api.listOutbox);

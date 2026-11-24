@@ -1,13 +1,12 @@
 "use client";
 import { Check, Linkedin, Mail, Save, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { TierChip } from "@/components/leads/lead-bits";
+import { ScoreTier } from "@/components/leads/lead-bits";
 import { PageHeader } from "@/components/page-header";
 import { decideMessage, editMessage } from "@/lib/client/api";
 import { formatRelativeTime } from "@/lib/client/format";
 import { useOutbox } from "@/lib/client/hooks";
-import type { OutboxItem } from "@/lib/client/views";
-import type { MessageStatus } from "@/lib/types";
+import type { MessageStatus, OutboxItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type Filter = "draft" | "approved" | "rejected" | "all";
@@ -25,20 +24,20 @@ export function OutboxView() {
 
   const items = (data ?? [])
     .filter((m) => filter === "all" || m.status === filter)
-    .sort((a, b) => a.lead.person.name.localeCompare(b.lead.person.name) || a.step - b.step || a.variant.localeCompare(b.variant));
+    .sort((a, b) => a.person.name.localeCompare(b.person.name) || a.step - b.step || a.variant.localeCompare(b.variant));
   const selected = items.find((m) => m.id === selectedId) ?? items[0] ?? null;
   const count = (s: Filter) => (data ?? []).filter((m) => s === "all" || m.status === s).length;
 
-  if (error) return <p className="p-6 font-mono text-xs text-danger">Outbox unavailable: {error}</p>;
+  if (error) return <p className="body-sm p-6 text-negative">Outbox unavailable: {error}</p>;
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader kicker="04 · Outbox" title="Human approval queue">
-        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-muted">
-          <ShieldCheck className="size-3.5 text-success" aria-hidden /> Nothing leaves without your Approve
+      <PageHeader kicker="Step 4 · Outreach" title={data ? `${count("draft")} drafts wait for your approval` : "Outbox"} lede="Edit any draft, then approve or reject it. Nothing leaves Flare without your approval.">
+        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted">
+          <ShieldCheck className="size-3.5 text-positive" aria-hidden /> Nothing leaves without your Approve
         </span>
       </PageHeader>
-      <div className="flex items-center gap-1 border-b border-border-subtle px-6 py-2 font-mono text-[11px]" role="tablist">
+      <div className="flex items-center gap-1 border-b border-line px-6 pb-3" role="tablist">
         {FILTERS.map((f) => (
           <button
             key={f.key}
@@ -46,7 +45,7 @@ export function OutboxView() {
             role="tab"
             aria-selected={filter === f.key}
             onClick={() => setFilter(f.key)}
-            className={cn("rounded-sm px-2 py-0.5", filter === f.key ? "bg-surface-raised text-accent" : "text-muted hover:text-accent")}
+            className={cn("fl-btn fl-btn--sm", filter === f.key ? "fl-btn--secondary" : "fl-btn--ghost")}
           >
             {f.label} <span className="tabular-nums">{count(f.key)}</span>
           </button>
@@ -54,8 +53,8 @@ export function OutboxView() {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)]">
-        <ul className="overflow-y-auto border-r border-border-subtle" data-testid="outbox-list">
-          {data && items.length === 0 && <li className="px-4 py-6 text-sm text-muted">Nothing here. Drafts from the agent show up under Needs approval.</li>}
+        <ul className="overflow-y-auto border-r border-line" data-testid="outbox-list">
+          {data && items.length === 0 && <li className="px-4 py-6 text-sm text-ink-muted">Nothing here. Drafts from the agent show up under Needs approval.</li>}
           {items.map((m) => (
             <li key={m.id}>
               <button
@@ -63,20 +62,20 @@ export function OutboxView() {
                 onClick={() => setSelectedId(m.id)}
                 aria-current={selected?.id === m.id}
                 className={cn(
-                  "w-full border-b border-border-subtle px-4 py-2 text-left",
-                  selected?.id === m.id ? "bg-surface-raised" : "hover:bg-surface-raised/50",
+                  "w-full border-b border-line px-4 py-2 text-left",
+                  selected?.id === m.id ? "bg-surface-1" : "hover:bg-surface-1/50",
                 )}
                 data-testid="outbox-item"
               >
                 <div className="flex items-center gap-2">
                   <ChannelIcon channel={m.channel} />
-                  <span className="truncate text-sm font-medium">{m.lead.person.name}</span>
-                  <span className="ml-auto font-mono text-[10px] text-muted">
+                  <span className="truncate text-sm font-medium">{m.person.name}</span>
+                  <span className="ml-auto font-mono text-[10px] text-ink-muted">
                     S{m.step}·{m.variant}
                   </span>
                   <StatusPill status={m.status} />
                 </div>
-                <div className="mt-0.5 truncate pl-5 text-xs text-muted">{m.subject ?? m.body.split("\n")[0]}</div>
+                <div className="mt-0.5 truncate pl-5 text-xs text-ink-muted">{m.subject ?? m.body.split("\n")[0]}</div>
               </button>
             </li>
           ))}
@@ -89,28 +88,27 @@ export function OutboxView() {
 
 function ChannelIcon({ channel }: { channel: OutboxItem["channel"] }) {
   const Icon = channel === "email" ? Mail : Linkedin;
-  return <Icon className="size-3.5 shrink-0 text-muted" aria-label={channel} />;
+  return <Icon className="size-3.5 shrink-0 text-ink-muted" aria-label={channel} />;
 }
 
+const STATUS: Record<MessageStatus, [string, string]> = {
+  draft: ["fl-badge--caution", "Awaiting approval"],
+  approved: ["fl-badge--positive", "Approved"],
+  rejected: ["fl-badge--negative", "Rejected"],
+  sent: ["fl-badge--info", "Sent"],
+};
+
 function StatusPill({ status }: { status: MessageStatus }) {
+  const [cls, word] = STATUS[status];
   return (
-    <span
-      className={cn(
-        "rounded-sm px-1.5 py-px font-mono text-[10px] uppercase tracking-wider",
-        status === "draft" && "bg-warning/10 text-warning",
-        status === "approved" && "bg-success/10 text-success",
-        status === "rejected" && "bg-surface-raised text-muted/60 line-through",
-        status === "sent" && "bg-accent/15 text-accent",
-      )}
-      data-status={status}
-    >
-      {status}
+    <span className={cn("fl-badge", cls)} data-status={status}>
+      {word}
     </span>
   );
 }
 
 const fieldCls =
-  "w-full rounded-sm border border-border-subtle bg-surface-raised px-2.5 py-1.5 text-sm placeholder:text-muted/50 focus:border-accent focus:outline-none disabled:opacity-70";
+  "w-full rounded-md border border-line bg-surface-1 px-3 py-2 text-sm placeholder:text-ink-faint focus:border-line-strong focus:outline-none disabled:opacity-70";
 
 function MessageEditor({ item }: { item: OutboxItem }) {
   const [subject, setSubject] = useState(item.subject ?? "");
@@ -141,26 +139,26 @@ function MessageEditor({ item }: { item: OutboxItem }) {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <TierChip tier={item.lead.tier} />
-            <h3 className="font-serif text-xl">{item.lead.person.name}</h3>
+            <h3 className="title">{item.person.name}</h3>
+            <ScoreTier score={item.lead.fitScore} tier={item.lead.tier} />
           </div>
-          <p className="mt-0.5 text-xs text-muted">
-            {[item.lead.person.title, item.lead.account?.name].filter(Boolean).join(" · ")} · fit {item.lead.fitScore}
+          <p className="mt-0.5 text-xs text-ink-muted">
+            {[item.person.title, item.account?.name].filter(Boolean).join(" · ")}
           </p>
         </div>
-        <div className="flex items-center gap-2 font-mono text-[11px] text-muted">
+        <div className="flex items-center gap-2 font-mono text-[11px] text-ink-muted">
           <ChannelIcon channel={item.channel} /> {item.channel} · step {item.step} · variant {item.variant}
           <StatusPill status={item.status} />
         </div>
       </header>
 
-      {item.signalSummaries.length > 0 && (
+      {item.signals.length > 0 && (
         <div className="mt-4">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-muted">Personalized on</p>
+          <p className="label text-ink-muted">Personalized on</p>
           <ul className="mt-1 flex flex-wrap gap-1.5">
-            {item.signalSummaries.map((s) => (
-              <li key={s.id} className="rounded-sm border border-border-subtle bg-surface-raised px-2 py-0.5 text-xs">
-                <span className="font-mono text-[10px] uppercase text-accent">{s.kind.replace("_", " ")}</span> {s.summary}
+            {item.signals.map((s) => (
+              <li key={s.id} className="rounded-sm border border-line bg-surface-1 px-2 py-0.5 text-xs">
+                <span className="label text-ink-muted">{s.kind.replace("_", " ")}</span> {s.summary}
               </li>
             ))}
           </ul>
@@ -170,12 +168,12 @@ function MessageEditor({ item }: { item: OutboxItem }) {
       <div className="mt-5 grid gap-3">
         {item.channel === "email" && (
           <label className="grid gap-1">
-            <span className="text-xs text-muted">Subject</span>
+            <span className="text-xs text-ink-muted">Subject</span>
             <input className={fieldCls} value={subject} onChange={(e) => setSubject(e.target.value)} disabled={!editable} name="subject" />
           </label>
         )}
         <label className="grid gap-1">
-          <span className="text-xs text-muted">Body</span>
+          <span className="text-xs text-ink-muted">Body</span>
           <textarea
             className={cn(fieldCls, "min-h-56 resize-y font-sans leading-relaxed")}
             value={body}
@@ -186,7 +184,7 @@ function MessageEditor({ item }: { item: OutboxItem }) {
         </label>
       </div>
 
-      {err && <p className="mt-3 text-sm text-danger" role="alert">{err}</p>}
+      {err && <p className="mt-3 text-sm text-negative" role="alert">{err}</p>}
 
       {editable ? (
         <div className="mt-4 flex items-center gap-2">
@@ -194,34 +192,34 @@ function MessageEditor({ item }: { item: OutboxItem }) {
             type="button"
             disabled={busy || !body.trim()}
             onClick={() => act(() => decideMessage(item.id, "approved", patch))}
-            className="inline-flex items-center gap-1.5 rounded-sm bg-accent px-3 py-1.5 font-mono text-xs font-semibold text-surface hover:brightness-110 disabled:opacity-40"
+            className="fl-btn fl-btn--primary"
             data-testid="approve"
           >
-            <Check className="size-3.5" aria-hidden /> {dirty ? "Approve with edits" : "Approve"}
+            <Check aria-hidden /> {dirty ? "Approve with edits" : "Approve draft"}
           </button>
           <button
             type="button"
             disabled={busy}
             onClick={() => act(() => decideMessage(item.id, "rejected"))}
-            className="inline-flex items-center gap-1.5 rounded-sm border border-border-subtle px-3 py-1.5 font-mono text-xs text-muted hover:border-danger/50 hover:text-danger disabled:opacity-40"
+            className="fl-btn fl-btn--ghost"
             data-testid="reject"
           >
-            <X className="size-3.5" aria-hidden /> Reject
+            <X aria-hidden /> Reject draft
           </button>
           {dirty && (
             <button
               type="button"
               disabled={busy || !body.trim()}
               onClick={() => act(() => editMessage(item.id, patch))}
-              className="inline-flex items-center gap-1.5 rounded-sm border border-border-subtle px-3 py-1.5 font-mono text-xs text-muted hover:text-accent disabled:opacity-40"
+              className="fl-btn fl-btn--secondary"
             >
-              <Save className="size-3.5" aria-hidden /> Save draft
+              <Save aria-hidden /> Save draft
             </button>
           )}
-          <span className="ml-auto text-xs text-muted/60">Approving queues the message. It is not sent from here.</span>
+          <span className="ml-auto text-xs text-ink-faint">Approving queues the message. It is not sent from here.</span>
         </div>
       ) : (
-        <p className="mt-4 rounded-sm border border-border-subtle bg-surface-raised px-3 py-2 text-xs text-muted" data-testid="decision-note">
+        <p className="mt-4 rounded-sm border border-line bg-surface-1 px-3 py-2 text-xs text-ink-muted" data-testid="decision-note">
           {item.status === "approved" ? "Approved" : item.status === "rejected" ? "Rejected" : "Sent"} by {item.decidedBy ?? "rep"}
           {item.decidedAt ? ` ${formatRelativeTime(item.decidedAt, now)}` : ""}.
           {item.status === "approved" && " Queued for sending; nothing has been sent."}

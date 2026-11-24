@@ -1,28 +1,44 @@
 @import "tailwindcss";
+/* design-system/tokens.css and components/bundle.css are imported in layout.tsx,
+   before this file: bundle.css starts with a Google Fonts @import url(), which is
+   only valid at the top of its own stylesheet. */
 
-/* Design tokens. Owned by Jay (Flare Design System) from U2 on; ui-dev uses the
-   semantic names below and never raw palette classes or hex values. */
-@theme {
-  --font-serif: ui-serif, Georgia, "Times New Roman", serif;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
-  --color-flare: #ff5a1f;
-
-  /* Semantic bridge (mapped to the U1 palette) */
-  --color-surface: #0a0a0a;
-  --color-surface-raised: #171717;
-  --color-border-subtle: #262626;
-  --color-muted: #a3a3a3;
-  --color-accent: #ff5a1f;
-  --color-success: #34d399;
-  --color-warning: #fbbf24;
-  --color-danger: #f87171;
+/* Tailwind names for Jay's Flare Design System tokens (design-system/tokens.css).
+   This block belongs to Jay from here on; pages use these names only. */
+@theme inline {
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-flare: var(--flare);
+  --color-flare-strong: var(--flare-strong);
+  --color-flare-text: var(--flare-text);
+  --color-flare-wash: var(--flare-wash);
+  --color-on-flare: var(--on-flare);
+  --color-positive: var(--positive);
+  --color-info: var(--info);
+  --color-caution: var(--caution);
+  --color-negative: var(--negative);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
+/* next/font families (layout.tsx) take precedence over the token fallbacks. */
 :root {
   color-scheme: dark;
+  --font-display: var(--font-newsreader, "Newsreader"), ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-geist, "Geist"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono, "Geist Mono"), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 body {
-  @apply bg-surface text-neutral-100 font-sans antialiased;
+  background: var(--surface-0);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }

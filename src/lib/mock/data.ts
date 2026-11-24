@@ -1,8 +1,9 @@
+// Test fixture only (pipeline.test.ts); the app reads the real API.
 // Mock data for UI development until core-dev's read endpoints land on main.
 // Everything here is FICTIONAL: invented companies on reserved `.example` domains
 // and invented people. No real personal data. Shapes follow src/lib/types.ts.
 import type { Account, Activity, Icp, LeadView, Message, Person, Product, QuarantineCounts, Signal, Source } from "@/lib/types";
-import type { CreditsView } from "@/lib/client/views";
+import type { CreditsView } from "@/lib/types";
 
 const T0 = "2026-11-24T19:40:00.000Z";
 
@@ -201,4 +202,4 @@ export const mockActivity: Activity[] = [
   { id: 5, actorKind: "rep", tool: "move_stage", summary: "Cobalt Dental: Replied → Meeting Booked", entityType: "lead", entityId: 5, leadId: 5, data: { from: "replied", to: "meeting_booked" }, createdAt: "2026-11-24T19:44:00.000Z" },
 ];
 
-export const mockCredits: CreditsView = { balance: 420, updatedAt: T0, allotment: 500, flexprice: "not_configured" };
+export const mockCredits: CreditsView = { balance: 420, allotment: 500, flexprice: "not_configured" };

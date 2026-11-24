@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Check, ExternalLink, Pencil, RotateCcw, X } from "lucide-react";
+import { Check, Pencil, RotateCcw, X } from "lucide-react";
 import { useState } from "react";
 import { ConfidenceChip } from "@/components/confidence-chip";
 import { PageHeader } from "@/components/page-header";
@@ -21,15 +21,15 @@ export function IcpView() {
   const { data: product } = useProduct();
   const { data: icp, loading, error } = useIcp(product?.id);
 
-  if (error) return <p className="p-6 font-mono text-xs text-danger">ICP unavailable: {error}</p>;
-  if (loading || !product) return <p className="p-6 font-mono text-xs text-muted">Loading ICP…</p>;
+  if (error) return <p className="body-sm p-6 text-negative">ICP unavailable: {error}</p>;
+  if (loading || !product) return <p className="body-sm p-6 text-ink-muted">Loading ICP…</p>;
   if (!icp) {
     return (
       <div>
-        <PageHeader kicker="02 · ICP" title="Ideal customer profile" />
-        <p className="p-6 text-sm text-muted">
+        <PageHeader kicker="Step 2 · ICP" title="Ideal customer profile (ICP)" />
+        <p className="p-6 text-sm text-ink-muted">
           No ICP yet. Run the GTM agent from{" "}
-          <Link href="/intake" className="text-accent underline-offset-2 hover:underline">
+          <Link href="/intake" className="text-flare-text underline-offset-2 hover:underline">
             Intake
           </Link>{" "}
           and it will infer one here.
@@ -42,18 +42,18 @@ export function IcpView() {
 
   return (
     <div>
-      <PageHeader kicker="02 · ICP" title={`Who buys ${product.name}`}>
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
-          inferred by agent · updated {formatRelativeTime(icp.updatedAt)}
-        </span>
-      </PageHeader>
+      <PageHeader
+        kicker="Step 2 · ICP"
+        title={`${icp.industries.length} industries, ${icp.personas.length} personas buy ${product.name}`}
+        lede={`Ideal customer profile (ICP) inferred by the agent, updated ${formatRelativeTime(icp.updatedAt)}. ${icp.expansions.length} expansion segments wait for your decision.`}
+      />
 
-      <table className="w-full border-collapse text-sm" data-testid="icp-fields">
+      <div className="px-6"><div className="fl-grid-wrap"><table className="fl-grid" data-testid="icp-fields">
         <thead>
-          <tr className="border-b border-border-subtle text-left font-mono text-[10px] uppercase tracking-wider text-muted">
-            <th className="w-40 px-6 py-2 font-normal">Field</th>
-            <th className="px-3 py-2 font-normal">Values</th>
-            <th className="w-32 px-6 py-2 text-right font-normal">Confidence</th>
+          <tr>
+            <th>Field</th>
+            <th>Values</th>
+            <th className="is-num">Confidence</th>
           </tr>
         </thead>
         <tbody>
@@ -61,63 +61,63 @@ export function IcpView() {
             const values = icp[key];
             const confidence = icp.confidence[key] ?? 0;
             return (
-              <tr key={key} className="border-b border-border-subtle align-top hover:bg-surface-raised/40" data-field={key}>
-                <th scope="row" className="px-6 py-2.5 text-left font-medium">
+              <tr key={key} data-field={key}>
+                <td className="font-medium">
                   {label}
-                </th>
-                <td className="px-3 py-2">
+                </td>
+                <td className="py-1">
                   <div className="flex flex-wrap gap-1.5">
-                    {values.length === 0 && <span className="text-muted/60">—</span>}
+                    {values.length === 0 && <span className="text-ink-faint">—</span>}
                     {values.map((v) => (
-                      <span key={v} className="rounded-sm border border-border-subtle bg-surface-raised px-2 py-0.5 text-xs">
+                      <span key={v} className="fl-badge" style={{ paddingLeft: 8 }}>
                         {v}
                       </span>
                     ))}
                   </div>
                 </td>
-                <td className="px-6 py-2 text-right">
+                <td className="is-num">
                   <ConfidenceChip confidence={confidence} />
                 </td>
               </tr>
             );
           })}
         </tbody>
-      </table>
+      </table></div></div>
 
-      <div className="flex items-end justify-between border-b border-border-subtle px-6 pb-2 pt-8">
+      <div className="flex items-end justify-between px-6 pb-3 pt-12">
         <div>
-          <h3 className="font-serif text-xl">Expansion segments</h3>
-          <p className="mt-0.5 text-xs text-muted">Adjacent markets the agent found, with sources. You decide which ones it pursues.</p>
+          <h3 className="title">Expansion segments</h3>
+          <p className="body-sm text-ink-muted">Adjacent markets the agent found, with sources. You decide which ones it pursues.</p>
         </div>
-        <span className="font-mono text-xs tabular-nums text-muted">
+        <span className="data text-ink-muted">
           {accepted}/{icp.expansions.length} accepted
         </span>
       </div>
-      <div className="overflow-x-auto">
-      <table className="w-full min-w-[56rem] border-collapse text-sm" data-testid="icp-expansions">
+      <div className="px-6 pb-8"><div className="fl-grid-wrap">
+      <table className="fl-grid min-w-[52rem]" data-testid="icp-expansions">
         <thead>
-          <tr className="border-b border-border-subtle text-left font-mono text-[10px] uppercase tracking-wider text-muted">
-            <th className="w-52 px-6 py-2 font-normal">Segment</th>
-            <th className="min-w-[18rem] px-3 py-2 font-normal">Rationale</th>
-            <th className="w-36 px-3 py-2 font-normal">Sources</th>
-            <th className="w-24 px-3 py-2 font-normal">Status</th>
-            <th className="w-px whitespace-nowrap px-6 py-2 text-right font-normal">Decision</th>
+          <tr>
+            <th>Segment</th>
+            <th className="min-w-[18rem]">Rationale</th>
+            <th>Sources</th>
+            <th>Status</th>
+            <th className="w-px">Decision</th>
           </tr>
         </thead>
         <tbody>
           {icp.expansions.map((e) => (
-            <ExpansionRow key={e.id} exp={e} />
+            <ExpansionRow key={e.id} exp={e} productId={product.id} />
           ))}
         </tbody>
       </table>
-      </div>
+      </div></div>
     </div>
   );
 }
 
-const btn = "inline-flex items-center gap-1 rounded-sm border px-2 py-1 font-mono text-[11px] disabled:opacity-40";
+const btn = "fl-btn fl-btn--sm";
 
-function ExpansionRow({ exp }: { exp: Expansion }) {
+function ExpansionRow({ exp, productId }: { exp: Expansion; productId: number }) {
   const [editing, setEditing] = useState(false);
   const [segment, setSegment] = useState(exp.segment);
   const [rationale, setRationale] = useState(exp.rationale);
@@ -126,7 +126,7 @@ function ExpansionRow({ exp }: { exp: Expansion }) {
   async function decide(status: ExpansionStatus, patch?: { segment: string; rationale: string }) {
     setBusy(true);
     try {
-      await decideExpansion(exp.id, status, patch);
+      await decideExpansion(productId, exp.id, status, patch);
       setEditing(false);
     } finally {
       setBusy(false);
@@ -134,47 +134,47 @@ function ExpansionRow({ exp }: { exp: Expansion }) {
   }
 
   const input =
-    "w-full rounded-sm border border-border-subtle bg-surface-raised px-2 py-1 text-sm focus:border-accent focus:outline-none";
+    "w-full rounded-md border border-line bg-surface-0 px-2 py-1 text-sm focus:border-line-strong focus:outline-none";
 
   return (
     <tr
-      className={cn("border-b border-border-subtle align-top", exp.status === "dismissed" && "opacity-45")}
+      className={cn("align-top", exp.status === "dismissed" && "opacity-60")}
       data-testid="expansion-row"
       data-status={exp.status}
     >
-      <td className="px-6 py-2.5 font-medium">
+      <td className="py-2 font-medium" style={{ whiteSpace: "normal" }}>
         {editing ? <input className={input} value={segment} onChange={(e) => setSegment(e.target.value)} aria-label="Segment" /> : exp.segment}
       </td>
-      <td className="px-3 py-2.5 leading-snug text-muted">
+      <td className="py-2 text-ink-muted" style={{ whiteSpace: "normal" }}>
         {editing ? (
           <textarea className={cn(input, "min-h-16")} value={rationale} onChange={(e) => setRationale(e.target.value)} aria-label="Rationale" />
         ) : (
           exp.rationale
         )}
       </td>
-      <td className="px-3 py-2.5">
-        <ul className="space-y-0.5">
-          {exp.sources.map((s) => (
+      <td className="py-2">
+        <ul className="grid gap-1">
+          {exp.sources.map((s, i) => (
             <li key={s.url}>
               <a
                 href={s.url}
                 target="_blank"
                 rel="noreferrer"
                 title={s.quote ?? s.url}
-                className="inline-flex items-center gap-1 font-mono text-[11px] text-muted hover:underline"
+                className="fl-cite"
               >
-                <ExternalLink className="size-3" aria-hidden />
+                <b>{i + 1}</b>
                 {sourceLabel(s.url)}
               </a>
             </li>
           ))}
-          {exp.sources.length === 0 && <li className="font-mono text-[11px] text-warning">no source</li>}
+          {exp.sources.length === 0 && <li><span className="fl-badge fl-badge--caution">No source</span></li>}
         </ul>
       </td>
-      <td className="px-3 py-2.5">
+      <td className="py-2">
         <StatusPill status={exp.status} />
       </td>
-      <td className="w-px whitespace-nowrap px-6 py-2">
+      <td className="w-px py-2">
         <div className="flex justify-end gap-1">
           {editing ? (
             <>
@@ -182,9 +182,9 @@ function ExpansionRow({ exp }: { exp: Expansion }) {
                 type="button"
                 disabled={busy || !segment.trim()}
                 onClick={() => decide("accepted", { segment: segment.trim(), rationale: rationale.trim() })}
-                className={cn(btn, "border-success/50 text-success hover:bg-success/10")}
+                className={cn(btn, "fl-btn--secondary")}
               >
-                <Check className="size-3" aria-hidden /> Save &amp; accept
+                <Check aria-hidden /> Save &amp; accept
               </button>
               <button
                 type="button"
@@ -193,7 +193,7 @@ function ExpansionRow({ exp }: { exp: Expansion }) {
                   setSegment(exp.segment);
                   setRationale(exp.rationale);
                 }}
-                className={cn(btn, "border-border-subtle text-muted hover:text-accent")}
+                className={cn(btn, "fl-btn--ghost")}
               >
                 Cancel
               </button>
@@ -204,25 +204,25 @@ function ExpansionRow({ exp }: { exp: Expansion }) {
                 type="button"
                 disabled={busy}
                 onClick={() => decide("accepted")}
-                className={cn(btn, "border-success/50 text-success hover:bg-success/10")}
+                className={cn(btn, "fl-btn--secondary")}
               >
-                <Check className="size-3" aria-hidden /> Accept
+                <Check aria-hidden /> Accept
               </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => setEditing(true)}
-                className={cn(btn, "border-border-subtle text-current hover:text-accent")}
+                className={cn(btn, "fl-btn--secondary")}
               >
-                <Pencil className="size-3" aria-hidden /> Adjust
+                <Pencil aria-hidden /> Adjust
               </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => decide("dismissed")}
-                className={cn(btn, "border-border-subtle text-muted hover:border-danger/50 hover:text-danger")}
+                className={cn(btn, "fl-btn--ghost")}
               >
-                <X className="size-3" aria-hidden /> Dismiss
+                <X aria-hidden /> Dismiss
               </button>
             </>
           ) : (
@@ -230,9 +230,9 @@ function ExpansionRow({ exp }: { exp: Expansion }) {
               type="button"
               disabled={busy}
               onClick={() => decide("suggested")}
-              className={cn(btn, "border-border-subtle text-muted hover:text-accent")}
+              className={cn(btn, "fl-btn--ghost")}
             >
-              <RotateCcw className="size-3" aria-hidden /> Undo
+              <RotateCcw aria-hidden /> Undo
             </button>
           )}
         </div>
@@ -242,16 +242,7 @@ function ExpansionRow({ exp }: { exp: Expansion }) {
 }
 
 function StatusPill({ status }: { status: ExpansionStatus }) {
-  return (
-    <span
-      className={cn(
-        "rounded-sm px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider",
-        status === "accepted" && "bg-success/15 text-success",
-        status === "suggested" && "bg-border-subtle",
-        status === "dismissed" && "bg-surface-raised text-muted/60 line-through",
-      )}
-    >
-      {status}
-    </span>
-  );
+  const map = { accepted: ["fl-badge--positive", "Accepted"], suggested: ["fl-badge--caution", "Awaiting decision"], dismissed: ["", "Dismissed"] } as const;
+  const [cls, word] = map[status];
+  return <span className={cn("fl-badge", cls)}>{word}</span>;
 }
