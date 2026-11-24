@@ -18,6 +18,8 @@ Built at HackwithBay 4.0 (2026-11-24) by the RealTimeX team.
 
 **The app holds the data; the agent holds the intelligence.** Flare has no LLM API key. It is a local Next.js app with SQLite and a stable **agent-tools API**. ICP inference, web discovery, enrichment and copywriting run in a [RealTimeX](https://realtimex.ai) terminal agent that follows [`agent/SKILL.md`](agent/SKILL.md) and calls those tools. Every tool call is written to an activity log that the **Agent Thinking** panel shows live.
 
+Full technical spec (query logic, graph ontology, reasoning loop, integrated services): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ### Rules the app enforces (not just the prompt)
 
 | Rule | Where |
