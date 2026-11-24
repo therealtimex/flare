@@ -1,9 +1,9 @@
-// Seed script. core-dev replaces this in C1 with one demo product.
-import { getDb, schema } from "../src/lib/db";
+// Seeds one demo product and the starting credit balance. Run after db:migrate.
+import { getDb } from "../src/lib/db";
+import { dbPath } from "../src/lib/db/path";
+import { seedDemo } from "../src/lib/db/seed";
 
-const db = getDb();
-db.insert(schema.meta)
-  .values({ key: "seeded_at", value: new Date().toISOString(), updatedAt: new Date() })
-  .onConflictDoUpdate({ target: schema.meta.key, set: { value: new Date().toISOString(), updatedAt: new Date() } })
-  .run();
-console.log("Seeded.");
+const r = seedDemo(getDb());
+console.log(
+  `Seeded ${dbPath()}: product #${r.productId} (${r.createdProduct ? "created" : "already present"}), credits ${r.balance}.`,
+);
