@@ -3,6 +3,7 @@
 import { z } from "zod";
 import type { Db } from "../db";
 import { logActivity } from "../activity";
+import { InsufficientCreditsError } from "../metering";
 import type { ActorKind, EntityType } from "../types";
 import { toJsonSchema, type JsonSchema } from "./json-schema";
 
@@ -86,7 +87,7 @@ export function invoke(
     });
     return { ok: true, tool: name, result: out.result, warnings: out.warnings ?? [] };
   } catch (e) {
-    const code = e instanceof ToolError ? e.code : "internal_error";
+    const code = e instanceof ToolError || e instanceof InsufficientCreditsError ? e.code : "internal_error";
     const error = e instanceof Error ? e.message : String(e);
     logActivity(db, { actorKind, tool: name, summary: `failed: ${error}`, data: { error: code } });
     return { ok: false, tool: name, code, error };

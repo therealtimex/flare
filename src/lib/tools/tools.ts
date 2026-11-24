@@ -4,6 +4,7 @@ import { z } from "zod";
 import { accounts, edges, icps, leads, messages, people, products, schools, signals } from "../db/schema";
 import type { Db } from "../db";
 import { warmPaths } from "../graph";
+import { meter } from "../metering";
 import {
   addSources,
   creditBalance,
@@ -235,7 +236,6 @@ const addPersonTool = defineTool({
     sources: sourcesSchema,
   }),
   handler: (input, { db }) => {
-    // C3: credit gate for enrichment goes here.
     let accountId = input.accountId ?? null;
     if (!accountId && input.accountDomain) {
       const d = normalizeDomain(input.accountDomain);
@@ -257,6 +257,8 @@ const addPersonTool = defineTool({
           ),
         )
         .get();
+    // Credit gate: enriching a new contact costs credits (throws insufficient_credits, nothing saved).
+    const usage = existing ? null : meter(db, { event: "lead_enriched" });
     const hasSource = input.sources.length > 0;
     const patch = {
       name: input.name,
@@ -280,7 +282,7 @@ const addPersonTool = defineTool({
 
     const warnings = person.status === "quarantine" ? [CITATION_WARNING(`Person "${person.name}"`)] : [];
     return {
-      result: { person, created: !existing, quarantined: person.status === "quarantine" },
+      result: { person, created: !existing, quarantined: person.status === "quarantine", creditsCharged: usage ? usage.units : 0 },
       warnings,
       summary: `${existing ? "Updated" : "Added"} ${person.name}${person.title ? `, ${person.title}` : ""}${person.status === "quarantine" ? " — QUARANTINED (no source)" : ""}${person.email ? ` · email ${person.emailStatus}` : ""}`,
       entityType: "person",
@@ -543,6 +545,7 @@ const queryGraphTool = defineTool({
   }),
   handler: (input, { db }) => {
     const person = requireRow(db.select().from(people).where(eq(people.id, input.personId)).get(), "Person", input.personId);
+    meter(db, { event: "graph_query" });
     const paths = warmPaths(db, input);
     return {
       result: { paths },

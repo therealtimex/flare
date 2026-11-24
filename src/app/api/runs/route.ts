@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { dispatchRun } from "@/lib/runs";
+import { dispatchRun, RunError } from "@/lib/runs";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,6 @@ export async function POST(request: Request) {
     const baseUrl = process.env.FLARE_BASE_URL || new URL(request.url).origin;
     return NextResponse.json(await dispatchRun(getDb(), { productId, baseUrl }));
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: e instanceof RunError ? e.status : 500 });
   }
 }

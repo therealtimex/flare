@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Db } from "./db";
 import { logActivity } from "./activity";
+import { balanceOf } from "./metering";
 import { getProduct } from "./queries";
 import type { RunResponse } from "./types";
 
@@ -47,12 +48,25 @@ const defaultExec: Exec = (cmd, args) =>
 
 export type RunResult = RunResponse;
 
+export class RunError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
 export async function dispatchRun(
   db: Db,
   opts: { productId?: number; baseUrl: string; exec?: Exec; config?: RunConfig; template?: string },
 ): Promise<RunResult> {
   const product = getProduct(db, opts.productId);
-  if (!product) throw new Error("No product to run on. Create one on the Intake page first.");
+  if (!product) throw new RunError("No product to run on. Create one on the Intake page first.", 404);
+  if (balanceOf(db) <= 0) {
+    logActivity(db, { actorKind: "rep", tool: "run_agent", summary: "Agent run blocked: out of credits. Top up to run.", entityType: "product", entityId: product.id, data: { dispatched: false, error: "insufficient_credits" } });
+    throw new RunError("Out of credits. Top up to run the agent.", 402);
+  }
   const cfg = opts.config ?? runConfig();
   const brief = renderBrief({ productId: product.id, productName: product.name, baseUrl: opts.baseUrl }, opts.template);
   const args = [

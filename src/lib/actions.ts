@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Db } from "./db";
 import { logActivity } from "./activity";
 import { accounts, credits, icps, leads, messages, people, products, signals } from "./db/schema";
+import { flexpriceConfig, InsufficientCreditsError, meter } from "./metering";
 import { invoke } from "./tools/registry";
 import { TOOLS } from "./tools/tools";
 import {
@@ -108,12 +109,23 @@ export const messagePatch = z
  * to draft, so nothing leaves with text the rep did not approve.
  */
 export function decideMessage(db: Db, id: number, patch: z.infer<typeof messagePatch>): Message {
+  try {
+    return db.transaction(() => decideMessageTx(db, id, patch));
+  } catch (e) {
+    if (e instanceof InsufficientCreditsError) throw new ActionError(e.message, 402);
+    throw e;
+  }
+}
+
+function decideMessageTx(db: Db, id: number, patch: z.infer<typeof messagePatch>): Message {
   const msg = db.select().from(messages).where(eq(messages.id, id)).get();
   if (!msg) throw new ActionError(`Message #${id} not found`, 404);
   if (msg.status === "sent") throw new ActionError(`Message #${id} was already sent and cannot change`, 409);
   const edited = (patch.body !== undefined && patch.body !== msg.body) || (patch.subject !== undefined && patch.subject !== msg.subject);
   const status = patch.status ?? (edited && msg.status === "approved" ? "draft" : msg.status);
   const deciding = patch.status === "approved" || patch.status === "rejected";
+  // Approval queues the message for sending: metered as outreach_sent and credit-gated.
+  if (status === "approved" && msg.status !== "approved") meter(db, { event: "outreach_sent", leadId: msg.leadId });
   const updated = db
     .update(messages)
     .set({
@@ -190,7 +202,7 @@ export function creditsView(db: Db): CreditsView {
   return {
     balance: row?.balance ?? 0,
     allotment: row?.allotment ?? 0,
-    flexprice: process.env.FLEXPRICE_API_KEY ? "configured" : "not_configured",
+    flexprice: flexpriceConfig().apiKey ? "configured" : "not_configured",
   };
 }
 

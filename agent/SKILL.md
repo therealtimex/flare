@@ -25,7 +25,7 @@ curl -s -X POST {baseUrl}/api/agent-tools/invoke -H 'content-type: application/j
 3. **Email honesty.** `emailStatus: "verified"` only if a verifier confirmed it. A guess from the company's email pattern is `"pattern"` (cite the page that shows the pattern). Otherwise leave email empty.
 4. **Narrate.** Call `log_note` with one short sentence before each phase and whenever you make a judgment call. That is what the rep sees.
 5. Public company sources only (company sites, press releases, news, job posts, public profiles). No private or scraped personal data beyond name, title, public profile URL.
-6. If a tool returns `insufficient_credits`, stop enrichment, `log_note` that credits ran out, and tell the rep to top up.
+6. **Credits.** Each new contact (`add_person`) and each `query_graph` costs 1 credit (approvals cost the rep 1). `get_product` shows the balance. If a tool returns `insufficient_credits`, stop enrichment, `log_note` that credits ran out, and tell the rep to top up. Don't retry in a loop.
 
 ## Steps
 
