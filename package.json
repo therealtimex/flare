@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "flexprice:setup": "tsx scripts/flexprice-setup.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",

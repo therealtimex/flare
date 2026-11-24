@@ -321,3 +321,55 @@ export interface RunResponse {
   command: string;
   session?: unknown;
 }
+
+// ---------- analytics (GET /api/analytics) ----------
+
+export interface Conversion {
+  leads: number;
+  contacted: number;
+  replied: number;
+  meetingBooked: number;
+  won: number;
+  lost: number;
+  /** replied / contacted, 0–1 (0 when nothing contacted). */
+  replyRate: number;
+  /** won / leads, 0–1 */
+  winRate: number;
+}
+
+export interface Analytics {
+  totals: { leads: number; byStage: Record<Stage, number> };
+  /**
+   * Funnel steps matched → closed_won. `count` = leads currently at the stage;
+   * `reached` = leads that ever reached it (from stage history); `toNext` =
+   * reached(next)/reached(this), 0–1 (null on the last step).
+   */
+  funnel: { stage: Stage; count: number; reached: number; rate: number; toNext: number | null }[];
+  /** Leads currently closed_lost (an exit, not a funnel step). */
+  closedLost: number;
+  /** reached(closed_won) / reached(matched), 0–1 */
+  overallConversion: number;
+  byIndustry: ({ industry: string } & Conversion)[];
+  byTier: ({ tier: Tier } & Conversion)[];
+  /** Per A/B variant: message counts by status; replyRate = replied leads / leads with an approved or sent message of that variant. */
+  byVariant: {
+    variant: Variant;
+    drafted: number;
+    approved: number;
+    rejected: number;
+    sent: number;
+    leads: number;
+    replied: number;
+    replyRate: number;
+  }[];
+  attribution: {
+    leadsSourcedBy: Record<ActorKind, number>;
+    stageMovesBy: Record<ActorKind, number>;
+    approvalsBy: { rep: number };
+  };
+  credits: {
+    balance: number;
+    unitsUsed: Record<UsageEventName, number>;
+    flexprice: { configured: boolean; sent: number; failed: number; pending: number; notConfigured: number };
+  };
+}
