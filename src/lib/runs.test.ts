@@ -33,6 +33,7 @@ describe("runs", () => {
     expect(args[args.indexOf("--agent-name") + 1]).toBe("claude");
     expect(args[args.indexOf("--workspace-slug") + 1]).toBe("hackwithbay4");
     expect(args[args.indexOf("--thread-slug") + 1]).toBe("flare-agent");
+    expect(args[args.indexOf("--first-turn-delivery") + 1]).toBe("launch-args");
     expect(args[args.indexOf("--message") + 1]).toBe(r.brief);
     expect(db.select().from(activity).all().at(-1)).toMatchObject({ actorKind: "rep", tool: "run_agent" });
   });
