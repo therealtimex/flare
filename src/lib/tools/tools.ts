@@ -30,10 +30,15 @@ import { defineTool, ToolError, type ToolDef } from "./registry";
 
 const nowIso = () => new Date().toISOString();
 const idSchema = z.number().int().positive();
+/** Public web URL: http(s) only (rendered as links in the UI). */
+export const httpUrl = z
+  .string()
+  .url()
+  .refine((u) => /^https?:\/\//i.test(u), { message: "must be an http(s) URL" });
 const sourcesSchema = z
   .array(
     z.object({
-      url: z.string().url().describe("Public page that supports the record"),
+      url: httpUrl.describe("Public page that supports the record"),
       quote: z.string().max(1000).optional().describe("Short supporting excerpt from the page"),
     }),
   )
@@ -136,7 +141,7 @@ const saveIcpTool = defineTool({
         z.object({
           segment: z.string().min(1),
           rationale: z.string().min(1),
-          sources: z.array(z.object({ url: z.string().url(), quote: z.string().optional() })).default([]),
+          sources: z.array(z.object({ url: httpUrl, quote: z.string().optional() })).default([]),
         }),
       )
       .default([]),
@@ -224,13 +229,13 @@ const addAccountTool = defineTool({
 const addPersonTool = defineTool({
   name: "add_person",
   description:
-    "Add or update a contact at an account (deduped by LinkedIn URL, then name+account). Requires sources[] with ≥1 URL, else quarantined (hidden from leads). Also records a works_at edge. emailStatus: 'verified' only if a verifier confirmed it; 'pattern' if inferred from the company's email pattern.",
+    "Add or update a contact at an account (deduped by LinkedIn URL, then name+account). Requires sources[] with ≥1 URL, else quarantined (hidden from leads). Also records a works_at edge. emailStatus: 'verified' only when a public page states that exact address (cite it); 'pattern' when built from the company's email pattern (cite the page showing the pattern). No third-party enrichment or verifier APIs.",
   input: z.object({
     name: z.string().min(1),
     title: z.string().optional(),
     accountId: idSchema.optional(),
     accountDomain: z.string().optional().describe("Alternative to accountId: domain of an existing account"),
-    linkedinUrl: z.string().url().optional(),
+    linkedinUrl: httpUrl.optional(),
     email: z.string().email().optional(),
     emailStatus: z.enum(EMAIL_STATUSES).optional(),
     sources: sourcesSchema,
@@ -337,7 +342,7 @@ const addSignalTool = defineTool({
 const addEdgeTool = defineTool({
   name: "add_edge",
   description:
-    "Add a relationship edge for the graph (deduped). For past employers or schools that are not in the DB yet, give toType 'account' or 'school' with toName instead of toId; a graph-only node is created (a new account created this way is quarantined until add_account adds a source).",
+    "Add a relationship edge for the graph (deduped). For past employers or schools that are not in the DB yet, give toType 'account' or 'school' with toName instead of toId. Cite the page that shows the relationship in sources[]: an account created by name without a source is quarantined, and quarantined people/accounts never appear in warm paths.",
   input: z.object({
     fromType: z.enum(ENTITY_TYPES),
     fromId: idSchema,
@@ -346,6 +351,7 @@ const addEdgeTool = defineTool({
     toId: idSchema.optional(),
     toName: z.string().min(1).optional().describe("Used when toId is omitted (toType account or school only)"),
     meta: z.record(z.unknown()).optional().describe('e.g. {"title":"AE","from":"2019","to":"2022"}'),
+    sources: sourcesSchema,
   }),
   handler: (input, { db }) => {
     if (!entityExists(db, input.fromType, input.fromId)) throw new ToolError(`${input.fromType} #${input.fromId} not found`, "not_found");
@@ -359,11 +365,15 @@ const addEdgeTool = defineTool({
           db.insert(schools).values({ name: input.toName }).returning().get();
         toId = s.id;
       } else if (input.toType === "account") {
+        const cited = input.sources.length > 0;
         let a = db.select().from(accounts).where(sql`lower(${accounts.name}) = lower(${input.toName})`).get();
         if (!a) {
-          a = db.insert(accounts).values({ name: input.toName, status: "quarantine" }).returning().get();
-          warnings.push(`Created graph-only account "${a.name}" (quarantined, no source).`);
+          a = db.insert(accounts).values({ name: input.toName, status: cited ? "active" : "quarantine" }).returning().get();
+          if (!cited) warnings.push(`Created graph-only account "${a.name}" in QUARANTINE (no source); it is excluded from warm paths until cited.`);
+        } else if (a.status === "quarantine" && cited) {
+          a = db.update(accounts).set({ status: "active" }).where(eq(accounts.id, a.id)).returning().get();
         }
+        addSources(db, "account", a.id, input.sources);
         toId = a.id;
       } else throw new ToolError("toName only works with toType account or school", "invalid_input");
     } else if (!entityExists(db, input.toType, toId)) throw new ToolError(`${input.toType} #${toId} not found`, "not_found");
@@ -452,9 +462,12 @@ const draftMessageTool = defineTool({
     const lead = requireRow(db.select().from(leads).where(eq(leads.id, input.leadId)).get(), "Lead", input.leadId);
     const person = db.select().from(people).where(eq(people.id, lead.personId)).get()!;
     if (input.channel === "email" && !input.subject) throw new ToolError("Email drafts need a subject", "invalid_input");
-    for (const sid of input.signalsUsed)
-      if (!db.select({ id: signals.id }).from(signals).where(eq(signals.id, sid)).get())
-        throw new ToolError(`Signal #${sid} not found`, "not_found");
+    for (const sid of input.signalsUsed) {
+      const s = db.select({ id: signals.id, status: signals.status }).from(signals).where(eq(signals.id, sid)).get();
+      if (!s) throw new ToolError(`Signal #${sid} not found`, "not_found");
+      if (s.status === "quarantine")
+        throw new ToolError(`Signal #${sid} is quarantined (no source); cite it with add_signal before using it in copy.`, "citation_required");
+    }
     const warnings: string[] = [];
     if (!input.signalsUsed.length) warnings.push("No signalsUsed: judges expect signal-personalized copy.");
     if (input.channel === "email" && !person.email) warnings.push(`${person.name} has no email on file yet.`);
@@ -491,7 +504,7 @@ const draftMessageTool = defineTool({
 const moveStageTool = defineTool({
   name: "move_stage",
   description:
-    "Move a lead to a pipeline stage: matched → contacted → replied → meeting_booked → closed_won | closed_lost. The agent may only move a lead to 'contacted' (or later) once a rep has approved at least one message for it. The actor (agent/rep) is recorded for attribution.",
+    "Move a lead to a pipeline stage: matched → contacted → replied → meeting_booked → closed_won | closed_lost. The agent may only move a lead to 'contacted' (or later) once a rep has approved at least one message for it. The actor (agent/rep) of every move is recorded in activity for attribution; the lead's ownerKind (who sourced it) does not change.",
   input: z.object({
     leadId: idSchema,
     stage: z.enum(STAGES),
@@ -518,7 +531,7 @@ const moveStageTool = defineTool({
         ? lead
         : db
             .update(leads)
-            .set({ stage: input.stage, updatedAt: nowIso(), ...(actorKind === "rep" ? { ownerKind: "rep" as const } : {}) })
+            .set({ stage: input.stage, updatedAt: nowIso() })
             .where(eq(leads.id, lead.id))
             .returning()
             .get();
@@ -545,6 +558,8 @@ const queryGraphTool = defineTool({
   }),
   handler: (input, { db }) => {
     const person = requireRow(db.select().from(people).where(eq(people.id, input.personId)).get(), "Person", input.personId);
+    if (person.status === "quarantine")
+      throw new ToolError(`Person #${person.id} is quarantined (no source). Cite them with add_person first.`, "citation_required");
     meter(db, { event: "graph_query" });
     const paths = warmPaths(db, input);
     return {

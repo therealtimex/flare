@@ -1,6 +1,7 @@
 // Warm-intro paths: walk employer/school edges (both directions) from a person
 // with a recursive CTE and return paths that end at another person.
 // 2 hops = shared employer/school (A → Org ← B); 4 hops = colleague of a colleague.
+// Quarantined (uncited) people and accounts are never part of a path.
 import { inArray, sql } from "drizzle-orm";
 import type { Db } from "./db";
 import { accounts, people, schools } from "./db/schema";
@@ -46,12 +47,18 @@ export function warmPaths(db: Db, q: WarmPathQuery): WarmPath[] {
         UNION ALL
         SELECT to_type || ':' || to_id, from_type || ':' || from_id, type FROM edges WHERE type IN (${types})
       ),
+      blocked(k) AS (
+        SELECT 'person:' || id FROM people WHERE status = 'quarantine'
+        UNION ALL
+        SELECT 'account:' || id FROM accounts WHERE status = 'quarantine'
+      ),
       walk(node, path, etypes, hops) AS (
         SELECT ${start}, ',' || ${start} || ',', ',', 0
         UNION ALL
         SELECT e.b, walk.path || e.b || ',', walk.etypes || e.etype || ',', walk.hops + 1
         FROM walk JOIN e ON e.a = walk.node
         WHERE walk.hops < ${maxHops} AND instr(walk.path, ',' || e.b || ',') = 0
+          AND e.b NOT IN (SELECT k FROM blocked)
       )
     SELECT path, etypes, hops FROM walk
     WHERE hops > 0 AND node LIKE 'person:%' AND (${target} IS NULL OR node = ${target})

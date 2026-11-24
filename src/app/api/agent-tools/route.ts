@@ -12,6 +12,8 @@ export function GET(request: Request) {
     version: 1,
     invoke: { method: "POST", url: `${base}/api/agent-tools/invoke`, body: '{"tool": "<name>", "input": {...}}' },
     rules: [
+      "Flare's agent-tools API is the only data store. Never use the Signals app or the realtimex-signals, signals-publish or signals-writing skills.",
+      "No third-party enrichment, email-finder or email-verifier APIs (Hunter, Apollo, Clearbit, ...). Public web research with citations only.",
       "Every account, person and signal needs sources[] with at least one URL, or it is quarantined and hidden from leads.",
       "Messages are drafts until a human approves them in the Outbox. Never claim a message was sent.",
     ],

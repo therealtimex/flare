@@ -172,7 +172,7 @@ describe("tools", () => {
     const r = ok("move_stage", { leadId: lead.id, stage: "contacted" });
     expect(r.result).toMatchObject({ from: "matched", to: "contacted", changed: true, lead: { ownerKind: "agent" } });
     const rep = ok("move_stage", { leadId: lead.id, stage: "meeting_booked" }, "rep");
-    expect(rep.result.lead).toMatchObject({ stage: "meeting_booked", ownerKind: "rep" });
+    expect(rep.result.lead).toMatchObject({ stage: "meeting_booked", ownerKind: "agent" }); // who sourced it stays
     const last = db.select().from(activity).all().at(-1)!;
     expect(last).toMatchObject({ actorKind: "rep", tool: "move_stage", leadId: lead.id, data: { from: "contacted", to: "meeting_booked" } });
   });
@@ -180,13 +180,44 @@ describe("tools", () => {
   it("query_graph finds warm paths through a shared past employer", () => {
     const { person } = setupLead();
     const other = ok("add_person", { name: "Sam Lee", sources: SRC }).result.person;
-    ok("add_edge", { fromType: "person", fromId: person.id, type: "previously_employed_at", toType: "account", toName: "Stripe" });
+    ok("add_edge", { fromType: "person", fromId: person.id, type: "previously_employed_at", toType: "account", toName: "Stripe", sources: SRC });
     ok("add_edge", { fromType: "person", fromId: other.id, type: "previously_employed_at", toType: "account", toName: "Stripe" });
     const r = ok("query_graph", { personId: person.id, maxHops: 2 });
     expect(r.result.paths).toHaveLength(1);
     expect(r.result.paths[0]).toMatchObject({ hops: 2, edgeTypes: ["previously_employed_at", "previously_employed_at"] });
     expect(r.result.paths[0].nodes.map((n: { label: string }) => n.label)).toEqual(["Jo Rivera", "Stripe", "Sam Lee"]);
     expect(r.result.paths[0].summary).toContain("Stripe");
+  });
+
+  it("query_graph never routes through quarantined people or accounts", () => {
+    const { person } = setupLead();
+    const ghost = ok("add_person", { name: "Ghost", accountId: 1 }).result.person; // uncited → quarantine
+    const viaGhost = ok("query_graph", { personId: person.id }).result.paths;
+    expect(viaGhost.some((p: { nodes: { label: string }[] }) => p.nodes.some((n) => n.label === "Ghost"))).toBe(false);
+    // an uncited graph-only past employer is quarantined and blocks the path
+    const other = ok("add_person", { name: "Sam Lee", sources: SRC }).result.person;
+    ok("add_edge", { fromType: "person", fromId: person.id, type: "previously_employed_at", toType: "account", toName: "ShadyCo" });
+    ok("add_edge", { fromType: "person", fromId: other.id, type: "previously_employed_at", toType: "account", toName: "ShadyCo" });
+    expect(ok("query_graph", { personId: person.id, targetPersonId: other.id }).result.paths).toHaveLength(0);
+    // citing it promotes the account and opens the path
+    ok("add_edge", { fromType: "person", fromId: other.id, type: "previously_employed_at", toType: "account", toName: "ShadyCo", sources: SRC });
+    expect(ok("query_graph", { personId: person.id, targetPersonId: other.id }).result.paths).toHaveLength(1);
+    expect(call("query_graph", { personId: ghost.id })).toMatchObject({ ok: false, code: "citation_required" });
+  });
+
+  it("citations must be http(s) URLs", () => {
+    for (const url of ["javascript:alert(1)", "file:///etc/passwd", "data:text/html,x", "mailto:a@b.co"]) {
+      expect(call("add_account", { name: "JsCo", sources: [{ url }] })).toMatchObject({ ok: false, code: "invalid_input" });
+    }
+    expect(call("add_person", { name: "X", linkedinUrl: "javascript:alert(1)", sources: SRC })).toMatchObject({ code: "invalid_input" });
+    expect(call("save_icp", { industries: ["a"], sizeBands: ["b"], personas: ["c"], confidence: { industries: 1, sizeBands: 1, personas: 1, triggers: 1 }, expansions: [{ segment: "s", rationale: "r", sources: [{ url: "javascript:x" }] }] })).toMatchObject({ code: "invalid_input" });
+    expect(ok("add_account", { name: "Ok", sources: [{ url: "HTTPS://ok.example/x" }] }).result.quarantined).toBe(false);
+  });
+
+  it("draft_message refuses quarantined signals", () => {
+    const { lead, acct } = setupLead();
+    const q = ok("add_signal", { accountId: acct.id, kind: "news", summary: "rumor" }).result.signal;
+    expect(call("draft_message", { leadId: lead.id, channel: "linkedin", body: "hi", signalsUsed: [q.id] })).toMatchObject({ ok: false, code: "citation_required" });
   });
 
   it("log_note writes a note to the activity feed", () => {

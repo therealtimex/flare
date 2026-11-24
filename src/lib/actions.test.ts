@@ -87,10 +87,10 @@ describe("rep actions", () => {
     expect(listOutbox(db, { status: "approved" })).toHaveLength(0);
   });
 
-  it("moveStageAsRep moves without approval and attributes to rep", () => {
+  it("moveStageAsRep moves without approval and attributes the move to rep", () => {
     const { lead } = leadWithDraft();
     const moved = moveStageAsRep(db, lead.id, { stage: "replied" });
-    expect(moved).toMatchObject({ stage: "replied", ownerKind: "rep" });
+    expect(moved).toMatchObject({ stage: "replied", ownerKind: "agent" });
     expect(listActivity(db)[0]).toMatchObject({ actorKind: "rep", tool: "move_stage" });
     expect(() => moveStageAsRep(db, 999, { stage: "replied" })).toThrow(ActionError);
   });
