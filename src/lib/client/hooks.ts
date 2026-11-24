@@ -54,3 +54,4 @@ export const useActivity = (pollMs = 2000) => useResource(() => api.listActivity
 export const useCredits = (pollMs = 5000) => useResource(api.getCredits, { pollMs });
 export const useLeads = () => useResource(api.listLeads);
 export const useOutbox = () => useResource(api.listOutbox);
+export const useAnalytics = (productId?: number) => useResource(() => api.getAnalytics(productId), { pollMs: 10000, deps: [productId] });

@@ -59,3 +59,13 @@ describe("renderFallbackBrief", () => {
     expect(b).toMatch(/human approval/);
   });
 });
+
+describe("formatRate", () => {
+  it("formats fractions and hides rates with no denominator", async () => {
+    const { formatRate } = await import("./format");
+    expect(formatRate(0.416)).toBe("42%");
+    expect(formatRate(0, 0)).toBe("—");
+    expect(formatRate(null)).toBe("—");
+    expect(formatRate(1.2, 5)).toBe("100%");
+  });
+});
