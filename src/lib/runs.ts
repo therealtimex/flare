@@ -15,6 +15,9 @@ export interface RunConfig {
   agentName: string;
   workspaceSlug: string;
   threadSlug: string;
+  /** How the brief reaches the agent. "launch-args" passes it as the prompt argument, so it is
+   * submitted reliably; "" uses the CLI default (typed into the TUI, which raced in the dry run). */
+  firstTurnDelivery: string;
   disabled: boolean;
 }
 
@@ -24,6 +27,7 @@ export function runConfig(env: Record<string, string | undefined> = process.env)
     agentName: env.FLARE_AGENT_NAME || "claude",
     workspaceSlug: env.FLARE_RTX_WORKSPACE || "hackwithbay4",
     threadSlug: env.FLARE_RTX_THREAD || "flare-agent",
+    firstTurnDelivery: env.FLARE_FIRST_TURN_DELIVERY ?? "launch-args",
     disabled: env.FLARE_RUN_DISPATCH === "off",
   };
 }
@@ -76,6 +80,7 @@ export async function dispatchRun(
     "--workspace-slug", cfg.workspaceSlug,
     "--thread-slug", cfg.threadSlug,
     "--requested-by", "Flare",
+    ...(cfg.firstTurnDelivery ? ["--first-turn-delivery", cfg.firstTurnDelivery] : []),
     "--message", brief,
   ];
   const command = `${cfg.cli} open-terminal-session --agent-name ${cfg.agentName} --workspace-slug ${cfg.workspaceSlug} --thread-slug ${cfg.threadSlug} --message "<brief>"`;
