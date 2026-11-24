@@ -1,4 +1,4 @@
-import { desc, gt } from "drizzle-orm";
+import { and, desc, gt } from "drizzle-orm";
 import type { Db } from "./db";
 import { activity } from "./db/schema";
 import type { Activity, ActorKind, EntityType } from "./types";
@@ -29,11 +29,16 @@ export function logActivity(db: Db, a: ActivityInput): Activity {
     .get();
 }
 
-/** Newest-first feed; pass `afterId` to poll only rows newer than the last one seen. */
-export function listActivity(db: Db, opts: { afterId?: number; limit?: number } = {}): Activity[] {
+/** Newest-first feed; pass `afterId` (or `since`, ISO) to poll only newer rows. */
+export function listActivity(db: Db, opts: { afterId?: number; since?: string; limit?: number } = {}): Activity[] {
   const limit = Math.min(Math.max(opts.limit ?? 100, 1), 500);
-  const q = db.select().from(activity);
-  return (opts.afterId ? q.where(gt(activity.id, opts.afterId)) : q)
+  const conds = [];
+  if (opts.afterId) conds.push(gt(activity.id, opts.afterId));
+  if (opts.since) conds.push(gt(activity.createdAt, opts.since));
+  return db
+    .select()
+    .from(activity)
+    .where(conds.length ? and(...conds) : undefined)
     .orderBy(desc(activity.id))
     .limit(limit)
     .all();

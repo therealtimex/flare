@@ -268,7 +268,16 @@ export interface UsageEvent {
 
 export interface Credits {
   balance: number;
+  /** Starting/top-up allotment, for the meter's scale. */
+  allotment: number;
   updatedAt: ISODate;
+}
+
+/** GET /api/credits */
+export interface CreditsView {
+  balance: number;
+  allotment: number;
+  flexprice: "configured" | "not_configured";
 }
 
 // ---------- API view shapes (joined rows the UI renders) ----------
@@ -284,4 +293,31 @@ export interface QuarantineCounts {
   accounts: number;
   people: number;
   signals: number;
+}
+
+/** GET /api/leads */
+export interface LeadsResponse {
+  leads: LeadView[];
+  quarantine: QuarantineCounts;
+  /** accounts + people + signals in quarantine */
+  quarantineCount: number;
+}
+
+/** GET /api/messages: a message with what the Outbox needs to render it. */
+export interface OutboxItem extends Message {
+  lead: Pick<Lead, "id" | "fitScore" | "tier" | "stage" | "ownerKind">;
+  person: Pick<Person, "id" | "name" | "title" | "email" | "emailStatus" | "linkedinUrl">;
+  account: Pick<Account, "id" | "name" | "domain"> | null;
+  /** The signals listed in signalsUsed. */
+  signals: Signal[];
+}
+
+/** POST /api/runs (402 {error} when out of credits). */
+export interface RunResponse {
+  mode: "dispatched" | "fallback";
+  dispatched: boolean;
+  brief: string;
+  reason?: string;
+  command: string;
+  session?: unknown;
 }

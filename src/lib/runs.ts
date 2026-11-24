@@ -7,6 +7,7 @@ import { join } from "node:path";
 import type { Db } from "./db";
 import { logActivity } from "./activity";
 import { getProduct } from "./queries";
+import type { RunResponse } from "./types";
 
 export interface RunConfig {
   cli: string;
@@ -44,14 +45,7 @@ const defaultExec: Exec = (cmd, args) =>
     });
   });
 
-export interface RunResult {
-  dispatched: boolean;
-  brief: string;
-  /** Why dispatch fell back (CLI missing, error, disabled). */
-  reason?: string;
-  command: string;
-  session?: unknown;
-}
+export type RunResult = RunResponse;
 
 export async function dispatchRun(
   db: Db,
@@ -74,7 +68,7 @@ export async function dispatchRun(
 
   let result: RunResult;
   if (cfg.disabled) {
-    result = { dispatched: false, brief, command, reason: "Dispatch disabled (FLARE_RUN_DISPATCH=off). Copy the brief into an agent thread." };
+    result = { mode: "fallback", dispatched: false, brief, command, reason: "Dispatch disabled (FLARE_RUN_DISPATCH=off). Copy the brief into an agent thread." };
   } else {
     try {
       const { stdout } = await (opts.exec ?? defaultExec)(cfg.cli, args);
@@ -84,14 +78,14 @@ export async function dispatchRun(
       } catch {
         /* plain text output */
       }
-      result = { dispatched: true, brief, command, session };
+      result = { mode: "dispatched", dispatched: true, brief, command, session };
     } catch (e) {
       const err = e as NodeJS.ErrnoException & { stderr?: string };
       const reason =
         err.code === "ENOENT"
           ? `${cfg.cli} not found on this machine's PATH. Copy the brief into a RealTimeX agent thread, or set FLARE_PP_CLI.`
           : `Dispatch failed: ${(err.stderr || err.message || String(e)).trim().slice(0, 300)}`;
-      result = { dispatched: false, brief, command, reason };
+      result = { mode: "fallback", dispatched: false, brief, command, reason };
     }
   }
 
