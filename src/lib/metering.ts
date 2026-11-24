@@ -38,7 +38,7 @@ export function flexpriceConfig(env: Record<string, string | undefined> = proces
   const underTest = env === process.env && !!env.VITEST;
   return {
     apiKey: underTest ? null : env.FLEXPRICE_API_KEY?.trim() || null,
-    apiUrl: (env.FLEXPRICE_API_URL || "https://api.cloud.flexprice.io/v1").replace(/\/$/, ""),
+    apiUrl: (env.FLEXPRICE_API_URL || "https://us.api.flexprice.io/v1").replace(/\/$/, ""),
     customerId: env.FLEXPRICE_CUSTOMER_ID || "flare-demo",
   };
 }
