@@ -23,7 +23,7 @@ export class InsufficientCreditsError extends Error {
     public readonly needed: number,
     public readonly balance: number,
   ) {
-    super(`Out of credits: this needs ${needed} credit(s) and the balance is ${balance}. Ask the rep to top up credits in Flare.`);
+    super(`Out of credits: this needs ${needed} credit(s) and the balance is ${balance}. Top up credits in Flare to continue.`);
   }
 }
 

@@ -37,6 +37,7 @@ describe("credits", () => {
     setBalance(2);
     expect(spendCredits(db, 2)).toBe(0);
     expect(() => spendCredits(db, 1)).toThrow(InsufficientCreditsError);
+    expect(() => spendCredits(db, 1)).toThrow("Out of credits: this needs 1 credit(s) and the balance is 0. Top up credits in Flare to continue.");
     expect(balanceOf(db)).toBe(0);
   });
 
