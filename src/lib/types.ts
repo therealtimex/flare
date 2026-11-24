@@ -321,3 +321,31 @@ export interface RunResponse {
   command: string;
   session?: unknown;
 }
+
+// ---------- analytics (GET /api/analytics) ----------
+
+export interface Conversion {
+  leads: number;
+  contacted: number;
+  replied: number;
+  meetings: number;
+  won: number;
+  lost: number;
+  /** replied / contacted, 0–1 (0 when nothing contacted). */
+  replyRate: number;
+  /** won / leads, 0–1 */
+  winRate: number;
+}
+
+export interface Analytics {
+  totals: { leads: number; byStage: Record<Stage, number> };
+  funnel: { stage: Stage; reached: number; rate: number }[];
+  byIndustry: ({ industry: string } & Conversion)[];
+  byTier: ({ tier: Tier } & Conversion)[];
+  byVariant: { variant: Variant; approved: number; leads: number; replied: number; replyRate: number }[];
+  attribution: {
+    leadsSourcedBy: Record<ActorKind, number>;
+    stageMovesBy: Record<ActorKind, number>;
+    approvalsBy: { rep: number };
+  };
+}
