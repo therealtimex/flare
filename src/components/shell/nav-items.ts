@@ -11,6 +11,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/leads", label: "Leads" },
   { href: "/outbox", label: "Outbox" },
   { href: "/pipeline", label: "Pipeline" },
-  { href: "/graph", label: "Graph", soon: true },
-  { href: "/analytics", label: "Analytics", soon: true },
+  { href: "/analytics", label: "Analytics" },
 ];

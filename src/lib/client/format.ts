@@ -56,3 +56,12 @@ export function renderFallbackBrief(productId: number | string, baseUrl: string)
     `Every account, person and signal needs at least one source URL. Never send outreach: drafts wait for human approval.`,
   ].join("\n");
 }
+
+/** 0–1 rate → "42%"; "—" when there is no denominator. */
+export function formatRate(rate: number | null | undefined, denominator?: number): string {
+  if (rate == null || denominator === 0) return "—";
+  return `${Math.round(Math.min(1, Math.max(0, rate)) * 100)}%`;
+}
+
+/** Below this many leads per arm, an A/B difference is not called. */
+export const MIN_SAMPLE = 20;

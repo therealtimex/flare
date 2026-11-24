@@ -135,3 +135,7 @@ export async function runGtmAgent(productId: ID, baseUrl: string): Promise<RunRe
     invalidate();
   }
 }
+
+// ---- analytics (C4) ----
+export const getAnalytics = (productId?: ID) =>
+  req<import("@/lib/types").Analytics>(productId ? `/api/analytics?productId=${productId}` : "/api/analytics");

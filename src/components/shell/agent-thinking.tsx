@@ -8,8 +8,9 @@ import type { Activity } from "@/lib/types";
 /** reason | graph | validate, per the ActivityFeed README. */
 function activityKind(a: Activity): { kind: "reason" | "graph" | "validate"; result?: "pass" | "fail" } {
   if (a.tool === "query_graph" || a.tool === "add_edge") return { kind: "graph" };
+  if (a.tool === "log_note") return { kind: "reason" };
   const warn = a.data && ("warning" in a.data || "error" in a.data || "quarantined" in a.data);
-  if (warn || /quarantin|blocked|fail/i.test(a.summary)) return { kind: "validate", result: "fail" };
+  if (warn || /QUARANTINED|blocked|failed/.test(a.summary)) return { kind: "validate", result: "fail" };
   if (/^(add_|upsert_|save_)/.test(a.tool) && a.actorKind === "agent") return { kind: "validate", result: "pass" };
   return { kind: "reason" };
 }
