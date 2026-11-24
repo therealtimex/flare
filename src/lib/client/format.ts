@@ -28,6 +28,12 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+/** 24-hour "HH:MM:SS" for Agent thinking entries; "" for a bad date. */
+export function formatClock(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("en-GB", { hour12: false });
+}
+
 /** Credits meter fill 0–1 and a tone for low balances. */
 export function creditsLevel(balance: number, allotment: number): { fill: number; tone: "ok" | "low" | "empty" } {
   const fill = allotment > 0 ? Math.min(1, Math.max(0, balance / allotment)) : 0;

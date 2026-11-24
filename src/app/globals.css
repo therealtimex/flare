@@ -42,3 +42,12 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Agent graph: new nodes pop in; the current step's edge draws in. */
+@keyframes fl-pop { from { opacity: 0; transform: scale(0.6); } }
+@keyframes fl-draw { from { stroke-dashoffset: 1; } }
+.fl-graph-pop { transform-box: fill-box; transform-origin: center; animation: fl-pop 300ms ease-out; }
+.fl-graph-draw { stroke-dasharray: 1; animation: fl-draw 500ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .fl-graph-pop, .fl-graph-draw { animation: none; }
+}
