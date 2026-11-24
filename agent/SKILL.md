@@ -27,7 +27,8 @@ curl -s -X POST {baseUrl}/api/agent-tools/invoke -H 'content-type: application/j
 5. **Email honesty.** `emailStatus: "verified"` only when a public page states that exact address (cite that page in `sources`). An address built from the company's email pattern is `"pattern"`, and you must cite the page that shows the pattern. Never run an email-verification service. Otherwise leave email empty.
 6. **Narrate.** Call `log_note` with one short sentence before each phase and whenever you make a judgment call. That is what the rep sees.
 7. Public company sources only (company sites, press releases, news, job posts, public profiles). No private or scraped personal data beyond name, title, public profile URL.
-8. **Credits.** Each new cited contact (`add_person` with sources) and each `query_graph` costs 1 credit (approvals cost the rep 1). `get_product` shows the balance. If a tool returns `insufficient_credits`, stop enrichment, `log_note` that credits ran out, and tell the rep to top up. Don't retry in a loop.
+8. **Keep the run unattended.** No one may be watching your terminal, and every new kind of shell command can stop the run on a permission prompt. Do research with your **WebSearch** and **WebFetch** tools. Use Bash only for the exact `curl -s -X POST {baseUrl}/api/agent-tools/invoke ...` pattern above. Do **not** build shell pipelines (perl, sed, grep, fold, python) to scrape or parse pages. Read the page with WebFetch instead.
+9. **Credits.** Each new cited contact (`add_person` with sources) and each `query_graph` costs 1 credit (approvals cost the rep 1). `get_product` shows the balance. If a tool returns `insufficient_credits`, stop enrichment, `log_note` that credits ran out, and tell the rep to top up. Don't retry in a loop.
 
 ## Steps
 
