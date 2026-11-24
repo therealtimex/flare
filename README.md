@@ -36,6 +36,28 @@ The **knowledge graph** is the `edges` table, queried with recursive CTEs for 2�
 
 Stages: **Matched → Contacted → Replied → Meeting Booked → Closed Won / Closed Lost.**
 
+## Screenshots
+
+All data below is fictional (`.example` domains, invented people), loaded with `npm run demo:fixture`. Captured at 1440×900 with the Agent thinking panel open.
+
+**Intake:** describe the product in plain words and run the GTM agent.
+![Intake: product brief and Run GTM agent](docs/screenshots/intake.png)
+
+**ICP:** the inferred profile with a confidence per field, and cited expansion segments you accept or dismiss.
+![ICP: fields with confidence and expansion segments](docs/screenshots/icp.png)
+
+**Leads:** cited leads by fit score and tier, with every source one click away.
+![Leads: table with the citation popover open](docs/screenshots/leads.png)
+
+**Outbox:** A/B drafts wait for a human Approve; nothing is sent without it.
+![Outbox: a draft awaiting approval](docs/screenshots/outbox.png)
+
+**Pipeline:** Matched to Closed, with who moved each lead (agent or rep).
+![Pipeline: six stage columns with lead cards](docs/screenshots/pipeline.png)
+
+**Analytics:** funnel conversion, agent vs rep attribution, tier, industry and A/B results.
+![Analytics: funnel and attribution tables](docs/screenshots/analytics.png)
+
 ## Setup
 
 Requires **Node 22.16.0** (`.nvmrc`).
@@ -47,7 +69,10 @@ cp .env.example .env.local     # all settings are optional
 npm run db:migrate
 npm run seed                   # one demo product + 100 credits
 npm run dev                    # http://localhost:3020
+npm run demo:fixture  # optional: fictional demo data
 ```
+
+`demo:fixture` talks to the running server (`FLARE_URL`, default `http://localhost:3020`), so run it in a second terminal. Every company, person and URL in it is invented (`.example` domains). Use a fresh `FLARE_DATA_DIR` to keep it apart from real runs.
 
 Checks: `npm run lint && npm run typecheck && npm test`.
 
