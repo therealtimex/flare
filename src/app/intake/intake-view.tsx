@@ -221,8 +221,7 @@ function RunBanner({ result, copied, onCopy }: { result: RunResult; copied: bool
   if (result.mode === "dispatched") {
     return (
       <div className="mx-6 mb-4 flex items-center gap-2 rounded-lg border border-line bg-surface-1 px-4 py-3 text-sm" role="status">
-        <span className="fl-badge fl-badge--positive">Dispatched</span> Agent dispatched to the <code className="font-mono">flare-agent</code> thread. Watch Agent
-        Thinking for live tool calls.
+        <span className="fl-badge fl-badge--positive">Dispatched</span> Agent dispatched to its RealTimeX thread. Watch Agent Thinking for live tool calls.
       </div>
     );
   }
