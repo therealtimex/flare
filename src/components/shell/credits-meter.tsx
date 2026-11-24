@@ -60,7 +60,7 @@ export function CreditsMeter() {
             style={{ width: `${fill * 100}%` }}
           />
         </div>
-        <span className="label text-ink-faint">
+        <span className="label whitespace-nowrap text-ink-faint">
           Flexprice: {data?.flexprice === "configured" ? "metering" : "not configured"}
         </span>
       </div>

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PanelRightOpen } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { AgentThinking } from "./agent-thinking";
 import { CreditsMeter } from "./credits-meter";
@@ -11,6 +11,10 @@ import { NAV_ITEMS } from "./nav-items";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [thinkingOpen, setThinkingOpen] = useState(true);
+  // Below 1300px the 360px feed squeezes the grids; start collapsed there (the header button reopens it).
+  useEffect(() => {
+    if (window.innerWidth < 1300) setThinkingOpen(false);
+  }, []);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -19,7 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/intake" className="flex items-end gap-4" aria-label="Flare home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/brand/flare-lockup-reverse.svg" alt="Flare" width={96} height={47} className="h-9 w-auto" />
-            <span className="label pb-1 text-ink-muted">AI GTM engine · intake → ICP → cited leads → approved outreach → pipeline</span>
+            <span className="label hidden pb-1 text-ink-muted xl:inline">AI GTM engine · intake → ICP → cited leads → approved outreach → pipeline</span>
           </Link>
           <div className="flex items-end gap-4">
             <CreditsMeter />
