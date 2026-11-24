@@ -85,13 +85,13 @@ export function LeadsView() {
               )}
               {rows.map((l) => (
                 <tr key={l.id} data-testid="lead-row" data-lead-id={l.id}>
-                  <td>
+                  <td className="max-w-56 overflow-hidden text-ellipsis" title={[l.person.name, l.person.title].filter(Boolean).join(" · ")}>
                     {l.person.name} <span className="is-sub">· {l.person.title ?? "—"}</span>
                   </td>
                   <td>
                     <CitationsPopover sources={l.sources} label={l.person.name} />
                   </td>
-                  <td>
+                  <td className="max-w-48 overflow-hidden text-ellipsis" title={[l.account?.name, STAGE_LABELS[l.stage]].filter(Boolean).join(" · ")}>
                     {l.account?.name ?? "—"} <span className="is-sub">· {STAGE_LABELS[l.stage]}</span>
                   </td>
                   <td>
@@ -106,7 +106,7 @@ export function LeadsView() {
                   <td>
                     <LinkedInLink url={l.person.linkedinUrl} />
                   </td>
-                  <td className="max-w-64 overflow-hidden text-ellipsis" title={l.signals.map((s) => `${s.kind}: ${s.summary}`).join("\n")}>
+                  <td className="max-w-48 overflow-hidden text-ellipsis" title={l.signals.map((s) => `${s.kind}: ${s.summary}`).join("\n")}>
                     {l.signals[0] ? (
                       <>
                         <span className="label text-ink-muted">{l.signals[0].kind.replace("_", " ")}</span> {l.signals[0].summary}
