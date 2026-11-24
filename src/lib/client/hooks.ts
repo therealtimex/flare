@@ -48,7 +48,10 @@ export function useResource<T>(loader: () => Promise<T>, opts: { pollMs?: number
 }
 
 export const useProduct = () => useResource(api.getProduct);
-export const useIcp = (productId: string | undefined) =>
+export const useIcp = (productId: number | undefined) =>
   useResource(() => (productId ? api.getIcp(productId) : Promise.resolve(null)), { deps: [productId] });
 export const useActivity = (pollMs = 2000) => useResource(() => api.listActivity(50), { pollMs });
 export const useCredits = (pollMs = 5000) => useResource(api.getCredits, { pollMs });
+export const useLeads = () => useResource(api.listLeads);
+export const useQuarantine = () => useResource(api.getQuarantineCounts);
+export const useOutbox = () => useResource(api.listOutbox);

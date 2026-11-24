@@ -28,22 +28,22 @@ export function CreditsMeter() {
     <div className="flex items-center gap-3" data-testid="credits-meter">
       <div className="flex flex-col items-end gap-1">
         <div className="flex items-baseline gap-1.5 font-mono text-xs">
-          <Coins className="size-3.5 self-center text-neutral-500" aria-hidden />
+          <Coins className="size-3.5 self-center text-muted" aria-hidden />
           <span
             className={cn(
               "tabular-nums text-sm",
-              tone === "ok" && "text-neutral-100",
-              tone === "low" && "text-amber-400",
-              tone === "empty" && "text-red-400",
+              tone === "ok" && "text-current",
+              tone === "low" && "text-warning",
+              tone === "empty" && "text-danger",
             )}
             data-testid="credits-balance"
           >
             {data ? balance.toLocaleString() : "—"}
           </span>
-          <span className="text-neutral-500">credits</span>
+          <span className="text-muted">credits</span>
         </div>
         <div
-          className="h-1 w-28 overflow-hidden rounded-full bg-neutral-800"
+          className="h-1 w-28 overflow-hidden rounded-full bg-border-subtle"
           role="meter"
           aria-label="Credits remaining"
           aria-valuemin={0}
@@ -53,14 +53,14 @@ export function CreditsMeter() {
           <div
             className={cn(
               "h-full rounded-full transition-[width]",
-              tone === "ok" && "bg-[var(--color-flare)]",
-              tone === "low" && "bg-amber-400",
-              tone === "empty" && "bg-red-500",
+              tone === "ok" && "bg-accent",
+              tone === "low" && "bg-warning",
+              tone === "empty" && "bg-danger",
             )}
             style={{ width: `${fill * 100}%` }}
           />
         </div>
-        <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-600">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-muted/60">
           Flexprice: {data?.flexprice === "configured" ? "metering" : "not configured"}
         </span>
       </div>
@@ -68,7 +68,7 @@ export function CreditsMeter() {
         <Popover.Trigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded border border-neutral-700 px-2 py-1 font-mono text-xs text-neutral-300 hover:border-[var(--color-flare)] hover:text-white"
+            className="inline-flex items-center gap-1 rounded border border-border-subtle px-2 py-1 font-mono text-xs text-current hover:border-accent hover:text-accent"
           >
             <Plus className="size-3" aria-hidden /> Top up
           </button>
@@ -77,9 +77,9 @@ export function CreditsMeter() {
           <Popover.Content
             align="end"
             sideOffset={6}
-            className="z-50 w-48 rounded border border-neutral-800 bg-neutral-900 p-2 shadow-xl"
+            className="z-50 w-48 rounded border border-border-subtle bg-surface-raised p-2 shadow-xl"
           >
-            <p className="px-1 pb-2 font-mono text-[10px] uppercase tracking-wider text-neutral-500">Add credits (demo)</p>
+            <p className="px-1 pb-2 font-mono text-[10px] uppercase tracking-wider text-muted">Add credits (demo)</p>
             <div className="grid grid-cols-3 gap-1">
               {TOP_UPS.map((n) => (
                 <Popover.Close asChild key={n}>
@@ -87,7 +87,7 @@ export function CreditsMeter() {
                     type="button"
                     disabled={busy}
                     onClick={() => topUp(n)}
-                    className="rounded bg-neutral-800 py-1 font-mono text-xs tabular-nums hover:bg-[var(--color-flare)] hover:text-black disabled:opacity-50"
+                    className="rounded bg-border-subtle py-1 font-mono text-xs tabular-nums hover:bg-accent hover:text-surface disabled:opacity-50"
                   >
                     +{n}
                   </button>

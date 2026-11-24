@@ -1,31 +1,23 @@
 import { confidenceTone, formatConfidence } from "@/lib/client/format";
 import { cn } from "@/lib/utils";
 
-/** A value with its 0–1 confidence; tone by threshold (≥.75 high, ≥.5 medium). */
-export function ConfidenceChip({ label, confidence }: { label: string; confidence: number }) {
+/** A 0–1 confidence chip; tone by threshold (≥.75 high, ≥.5 medium, else low). */
+export function ConfidenceChip({ confidence, label }: { confidence: number; label?: string }) {
   const tone = confidenceTone(confidence);
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-sm border py-0.5 pl-2 pr-1 text-xs",
-        tone === "high" && "border-emerald-800/70 bg-emerald-950/40 text-emerald-100",
-        tone === "medium" && "border-amber-800/60 bg-amber-950/30 text-amber-100",
-        tone === "low" && "border-neutral-700 bg-neutral-900 text-neutral-400",
+        "inline-flex items-center gap-1.5 rounded-sm border px-1.5 py-0.5 font-mono text-[11px] tabular-nums",
+        tone === "high" && "border-success/40 bg-success/10 text-success",
+        tone === "medium" && "border-warning/40 bg-warning/10 text-warning",
+        tone === "low" && "border-border-subtle bg-surface-raised text-muted",
       )}
       data-tone={tone}
+      data-testid="confidence-chip"
       title={`Confidence ${formatConfidence(confidence)}`}
     >
-      {label}
-      <span
-        className={cn(
-          "rounded-sm px-1 font-mono text-[10px] tabular-nums",
-          tone === "high" && "bg-emerald-500/20 text-emerald-300",
-          tone === "medium" && "bg-amber-500/20 text-amber-300",
-          tone === "low" && "bg-neutral-800 text-neutral-500",
-        )}
-      >
-        {confidence.toFixed(2)}
-      </span>
+      <span className="uppercase tracking-wider">{label ?? tone}</span>
+      <span>{confidence.toFixed(2)}</span>
     </span>
   );
 }

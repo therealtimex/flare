@@ -8,9 +8,9 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/intake", label: "Intake" },
   { href: "/icp", label: "ICP" },
-  { href: "/leads", label: "Leads", soon: true },
-  { href: "/outbox", label: "Outbox", soon: true },
-  { href: "/pipeline", label: "Pipeline", soon: true },
+  { href: "/leads", label: "Leads" },
+  { href: "/outbox", label: "Outbox" },
+  { href: "/pipeline", label: "Pipeline" },
   { href: "/graph", label: "Graph", soon: true },
   { href: "/analytics", label: "Analytics", soon: true },
 ];
