@@ -36,7 +36,7 @@ export function seedDemo(db: Db): SeedResult {
       createdProduct = true;
     }
 
-    tx.insert(credits).values({ id: 1, balance: STARTING_CREDITS }).onConflictDoNothing().run();
+    tx.insert(credits).values({ id: 1, balance: STARTING_CREDITS, allotment: STARTING_CREDITS }).onConflictDoNothing().run();
     const balance = tx.select().from(credits).where(eq(credits.id, 1)).get()!.balance;
 
     const stamp = new Date();

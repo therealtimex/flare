@@ -236,5 +236,6 @@ export const usageEvents = sqliteTable(
 export const credits = sqliteTable("credits", {
   id: integer("id").primaryKey(),
   balance: integer("balance").notNull().default(0),
+  allotment: integer("allotment").notNull().default(100),
   updatedAt: updatedAt(),
 });
