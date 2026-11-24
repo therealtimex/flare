@@ -3,6 +3,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "./db";
 import { accounts, activity, leads, messages, people } from "./db/schema";
+import { usageSummary } from "./metering";
 import { STAGES, TIERS, VARIANTS, type ActorKind, type Analytics, type Conversion, type Stage } from "./types";
 
 export type { Analytics, Conversion };
@@ -45,7 +46,7 @@ export function computeAnalytics(db: Db, productId?: number): Analytics {
       leads: ids.length,
       contacted,
       replied,
-      meetings: c("meeting_booked"),
+      meetingBooked: c("meeting_booked"),
       won,
       lost: ids.filter((id) => lost.has(id)).length,
       replyRate: contacted ? replied / contacted : 0,
@@ -64,28 +65,47 @@ export function computeAnalytics(db: Db, productId?: number): Analytics {
 
   const msgs = leadIds.length
     ? db
-        .select({ leadId: messages.leadId, variant: messages.variant })
+        .select({ leadId: messages.leadId, variant: messages.variant, status: messages.status })
         .from(messages)
-        .where(and(inArray(messages.leadId, leadIds), inArray(messages.status, ["approved", "sent"])))
+        .where(inArray(messages.leadId, leadIds))
         .all()
     : [];
   const byVariant = VARIANTS.map((variant) => {
     const vm = msgs.filter((m) => m.variant === variant);
-    const vLeads = [...new Set(vm.map((m) => m.leadId))];
+    const n = (s: string) => vm.filter((m) => m.status === s).length;
+    const vLeads = [...new Set(vm.filter((m) => m.status === "approved" || m.status === "sent").map((m) => m.leadId))];
     const replied = vLeads.filter((id) => reached(id, "replied")).length;
-    return { variant, approved: vm.length, leads: vLeads.length, replied, replyRate: vLeads.length ? replied / vLeads.length : 0 };
+    return {
+      variant,
+      drafted: vm.length,
+      approved: n("approved"),
+      rejected: n("rejected"),
+      sent: n("sent"),
+      leads: vLeads.length,
+      replied,
+      replyRate: vLeads.length ? replied / vLeads.length : 0,
+    };
   });
+  const usage = usageSummary(db);
 
   const approvals = leadIds.length
     ? db.select({ id: activity.id }).from(activity).where(and(eq(activity.tool, "message.approve"), inArray(activity.leadId, leadIds))).all().length
     : 0;
 
+  const reachedCounts = FUNNEL.map((stage) => leadIds.filter((id) => reached(id, stage)).length);
+  const funnelSteps = FUNNEL.map((stage, i) => ({
+    stage,
+    count: byStage[stage],
+    reached: reachedCounts[i],
+    rate: rows.length ? reachedCounts[i] / rows.length : 0,
+    toNext: i === FUNNEL.length - 1 ? null : reachedCounts[i] ? reachedCounts[i + 1] / reachedCounts[i] : 0,
+  }));
+
   return {
     totals: { leads: rows.length, byStage },
-    funnel: FUNNEL.map((stage) => {
-      const n = leadIds.filter((id) => reached(id, stage)).length;
-      return { stage, reached: n, rate: rows.length ? n / rows.length : 0 };
-    }),
+    funnel: funnelSteps,
+    closedLost: byStage.closed_lost,
+    overallConversion: funnelSteps[0].reached ? funnelSteps[funnelSteps.length - 1].reached / funnelSteps[0].reached : 0,
     byIndustry: [...industries.entries()]
       .map(([industry, ids]) => ({ industry, ...conv(ids) }))
       .sort((a, b) => b.leads - a.leads || a.industry.localeCompare(b.industry)),
@@ -98,6 +118,17 @@ export function computeAnalytics(db: Db, productId?: number): Analytics {
       },
       stageMovesBy,
       approvalsBy: { rep: approvals },
+    },
+    credits: {
+      balance: usage.balance,
+      unitsUsed: Object.fromEntries(Object.entries(usage.events).map(([k, v]) => [k, v.units])) as Analytics["credits"]["unitsUsed"],
+      flexprice: {
+        configured: usage.flexprice === "configured",
+        sent: usage.byStatus.sent,
+        failed: usage.byStatus.failed,
+        pending: usage.byStatus.pending,
+        notConfigured: usage.byStatus.not_configured,
+      },
     },
   };
 }
