@@ -57,6 +57,21 @@ describe("credits", () => {
     expect(listActivity(db)[0]).toMatchObject({ tool: "add_person", summary: expect.stringMatching(/Out of credits/) });
   });
 
+  it("quarantined contacts are free; promoting one with a source charges once", () => {
+    call("add_account", { name: "Acme", sources: SRC });
+    const q = call("add_person", { name: "Uncited", accountId: 1 });
+    expect(q).toMatchObject({ ok: true, result: { quarantined: true, creditsCharged: 0 } });
+    expect(balanceOf(db)).toBe(100);
+    setBalance(0);
+    expect(call("add_person", { name: "Uncited2", accountId: 1 })).toMatchObject({ ok: true, result: { quarantined: true } });
+    setBalance(5);
+    const promoted = call("add_person", { name: "Uncited", accountId: 1, sources: SRC });
+    expect(promoted).toMatchObject({ ok: true, result: { quarantined: false, creditsCharged: 1 } });
+    expect(call("add_person", { name: "Uncited", accountId: 1, title: "CTO", sources: SRC })).toMatchObject({ result: { creditsCharged: 0 } });
+    expect(balanceOf(db)).toBe(4);
+    expect(usageSummary(db).events.lead_enriched).toEqual({ count: 1, units: 1 });
+  });
+
   it("query_graph is metered", () => {
     call("add_person", { name: "Kim", sources: SRC });
     call("query_graph", { personId: 1 });

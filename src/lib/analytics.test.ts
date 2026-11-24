@@ -57,11 +57,11 @@ describe("analytics", () => {
       { variant: "A", drafted: 1, approved: 1, rejected: 0, sent: 0, leads: 1, replied: 1, replyRate: 1 },
       { variant: "B", drafted: 2, approved: 1, rejected: 0, sent: 0, leads: 1, replied: 0, replyRate: 0 },
     ]);
-    // 4 new people (incl. quarantined) + 2 approvals = 6 credits used, all local (no key under test)
+    // 3 cited people + 2 approvals = 5 credits (the quarantined person is free), all local (no key under test)
     expect(r2.credits).toEqual({
-      balance: 94,
-      unitsUsed: { lead_enriched: 4, outreach_sent: 2, graph_query: 0 },
-      flexprice: { configured: false, sent: 0, failed: 0, pending: 0, notConfigured: 6 },
+      balance: 95,
+      unitsUsed: { lead_enriched: 3, outreach_sent: 2, graph_query: 0 },
+      flexprice: { configured: false, sent: 0, failed: 0, pending: 0, notConfigured: 5 },
     });
     expect(r.attribution).toEqual({ leadsSourcedBy: { agent: 3, rep: 0 }, stageMovesBy: { agent: 2, rep: 3 }, approvalsBy: { rep: 2 } });
   });
