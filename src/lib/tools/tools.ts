@@ -262,9 +262,11 @@ const addPersonTool = defineTool({
           ),
         )
         .get();
-    // Credit gate: enriching a new contact costs credits (throws insufficient_credits, nothing saved).
-    const usage = existing ? null : meter(db, { event: "lead_enriched" });
     const hasSource = input.sources.length > 0;
+    // Credit gate: a cited (active) contact costs 1 credit, charged once: on creation, or when a
+    // quarantined contact is promoted by a cited update. Quarantined saves are free.
+    // Throws insufficient_credits inside the transaction, so nothing is saved.
+    const usage = hasSource && (!existing || existing.status === "quarantine") ? meter(db, { event: "lead_enriched" }) : null;
     const patch = {
       name: input.name,
       ...(input.title ? { title: input.title } : {}),
