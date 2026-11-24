@@ -38,7 +38,7 @@ Stages: **Matched → Contacted → Replied → Meeting Booked → Closed Won / 
 
 ## Screenshots
 
-All data below is fictional (`.example` domains, invented people), loaded with `npm run demo:fixture`. Captured at 1440×900 with the Agent thinking panel open.
+All data below is fictional (`.example` domains, invented people), loaded with `npm run demo:fixture`. Captured at 1440×900 with the Agent thinking panel open, without a Flexprice key (so the meter reads "Flexprice: not configured"; with a key, usage events are sent to Flexprice).
 
 **Intake:** describe the product in plain words and run the GTM agent.
 ![Intake: product brief and Run GTM agent](docs/screenshots/intake.png)
