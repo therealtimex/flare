@@ -68,10 +68,10 @@ export function LeadsView() {
                 <th>Contact</th>
                 <th>Sources</th>
                 <th>Account</th>
+                <th>Owner</th>
+                <th className="is-num">Score</th>
                 <th>Email</th>
                 <th>LinkedIn</th>
-                <th className="is-num">Score</th>
-                <th>Owner</th>
                 <th>Top signal</th>
               </tr>
             </thead>
@@ -95,16 +95,16 @@ export function LeadsView() {
                     {l.account?.name ?? "—"} <span className="is-sub">· {STAGE_LABELS[l.stage]}</span>
                   </td>
                   <td>
-                    <EmailCell email={l.person.email} status={l.person.emailStatus} sourceUrl={emailSource(l)} />
-                  </td>
-                  <td>
-                    <LinkedInLink url={l.person.linkedinUrl} />
+                    <ActorBadge kind={l.ownerKind} />
                   </td>
                   <td className="is-num">
                     <ScoreTier score={l.fitScore} tier={l.tier} />
                   </td>
                   <td>
-                    <ActorBadge kind={l.ownerKind} />
+                    <EmailCell email={l.person.email} status={l.person.emailStatus} sourceUrl={emailSource(l)} />
+                  </td>
+                  <td>
+                    <LinkedInLink url={l.person.linkedinUrl} />
                   </td>
                   <td className="max-w-64 overflow-hidden text-ellipsis" title={l.signals.map((s) => `${s.kind}: ${s.summary}`).join("\n")}>
                     {l.signals[0] ? (
