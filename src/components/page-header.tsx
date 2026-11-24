@@ -1,11 +1,23 @@
-export function PageHeader({ kicker, title, children }: { kicker: string; title: string; children?: React.ReactNode }) {
+/** Editorial masthead (Jay's .fl-masthead): eyebrow, a result-stating title, one lede line. */
+export function PageHeader({
+  kicker,
+  title,
+  lede,
+  children,
+}: {
+  kicker: string;
+  title: string;
+  lede?: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="flex items-end justify-between gap-4 border-b border-border-subtle px-6 pb-4 pt-6">
-      <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted">{kicker}</p>
-        <h2 className="mt-1 font-serif text-2xl tracking-tight">{title}</h2>
+    <div className="flex flex-wrap items-end justify-between gap-4 px-6 pt-8">
+      <div className="fl-masthead" style={{ paddingBottom: "var(--space-6)" }}>
+        <p className="fl-masthead__eyebrow">{kicker}</p>
+        <h2 className="fl-masthead__title">{title}</h2>
+        {lede && <p className="fl-masthead__lede">{lede}</p>}
       </div>
-      {children && <div className="flex items-center gap-2">{children}</div>}
+      {children && <div className="flex items-center gap-2 pb-6">{children}</div>}
     </div>
   );
 }

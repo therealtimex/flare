@@ -2,7 +2,7 @@
 import { GripVertical } from "lucide-react";
 import { useState } from "react";
 import { ActorBadge } from "@/components/actor-badge";
-import { FitBar, TierChip } from "@/components/leads/lead-bits";
+import { ScoreTier } from "@/components/leads/lead-bits";
 import { PageHeader } from "@/components/page-header";
 import { moveStage } from "@/lib/client/api";
 import { formatRelativeTime } from "@/lib/client/format";
@@ -15,12 +15,13 @@ import { cn } from "@/lib/utils";
 const DRAG_TYPE = "application/x-flare-lead";
 
 export function PipelineView() {
-  const { data: leads, error } = useLeads();
+  const { data, error } = useLeads();
+  const leads = data?.leads;
   const { data: activity } = useActivity(3000);
   const [over, setOver] = useState<Stage | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  if (error) return <p className="p-6 font-mono text-xs text-danger">Pipeline unavailable: {error}</p>;
+  if (error) return <p className="body-sm p-6 text-negative">Pipeline unavailable: {error}</p>;
   const cols = groupByStage(leads ?? []);
   const movers = lastStageMovers(activity ?? []);
 
@@ -38,12 +39,12 @@ export function PipelineView() {
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader kicker="05 · Pipeline" title="Pipeline">
-        <span className="font-mono text-[11px] text-muted">
-          {total} leads · {won} won · drag a card or use its stage menu
+      <PageHeader kicker="Step 5 · Pipeline" title={data ? `${total} leads in pipeline, ${won} closed won` : "Pipeline"} lede="Drag a card or use its stage menu. Every move records whether the agent or a rep made it.">
+        <span className="data text-ink-muted">
+          {cols.meeting_booked.length} meetings booked
         </span>
       </PageHeader>
-      {err && <p className="px-6 py-2 text-sm text-danger" role="alert">{err}</p>}
+      {err && <p className="px-6 py-2 text-sm text-negative" role="alert">{err}</p>}
       <div className="grid min-h-0 flex-1 auto-cols-[minmax(9.5rem,1fr)] grid-flow-col overflow-x-auto" data-testid="pipeline-board">
         {STAGES.map((stage) => {
           const cards = cols[stage];
@@ -67,16 +68,16 @@ export function PipelineView() {
                 if (id) void move(id, stage);
               }}
               className={cn(
-                "flex min-h-0 flex-col border-r border-border-subtle",
-                over === stage && "bg-accent/5 outline outline-1 -outline-offset-1 outline-accent/50",
+                "flex min-h-0 flex-col border-r border-line",
+                over === stage && "bg-flare-wash outline outline-1 -outline-offset-1 outline-flare/50",
               )}
             >
-              <header className="flex items-baseline justify-between border-b border-border-subtle px-3 py-2">
-                <h3 className="text-sm font-medium">{STAGE_LABELS[stage]}</h3>
-                <span className="font-mono text-[10px] tabular-nums text-muted" title={`${agentN} agent-owned, ${cards.length - agentN} rep-owned`}>
+              <header className="flex items-baseline justify-between border-b border-line px-3 py-2">
+                <h3 className="label text-ink">{STAGE_LABELS[stage]}</h3>
+                <span className="data text-ink-muted" title={`${agentN} agent-owned, ${cards.length - agentN} rep-owned`}>
                   {cards.length}
                   {cards.length > 0 && (
-                    <span className="text-muted/60">
+                    <span className="text-ink-faint">
                       {" "}
                       · {agentN}a/{cards.length - agentN}r
                     </span>
@@ -87,7 +88,7 @@ export function PipelineView() {
                 {cards.map((l) => (
                   <LeadCard key={l.id} lead={l} mover={movers.get(l.id)} onMove={move} />
                 ))}
-                {cards.length === 0 && <li className="rounded-sm border border-dashed border-border-subtle px-2 py-4 text-center text-xs text-muted/60">Drop here</li>}
+                {cards.length === 0 && <li className="rounded-lg border border-dashed border-line px-2 py-4 text-center text-xs text-ink-faint">Drop here</li>}
               </ol>
             </section>
           );
@@ -113,40 +114,36 @@ function LeadCard({
         e.dataTransfer.setData(DRAG_TYPE, String(lead.id));
         e.dataTransfer.effectAllowed = "move";
       }}
-      className="cursor-grab rounded-sm border border-border-subtle bg-surface-raised p-2 text-xs active:cursor-grabbing"
+      className="fl-card cursor-grab text-xs active:cursor-grabbing"
+      style={{ padding: "var(--space-3)", gap: "var(--space-2)", gridTemplateColumns: "minmax(0, 1fr)" }}
       data-testid="pipeline-card"
       data-lead-id={lead.id}
     >
       <div className="flex items-start gap-1.5">
-        <GripVertical className="mt-0.5 size-3.5 shrink-0 text-muted/60" aria-hidden />
+        <GripVertical className="mt-0.5 size-3.5 shrink-0 text-ink-faint" aria-hidden />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <TierChip tier={lead.tier} />
-            <span className="truncate text-[13px] font-medium">{lead.person.name}</span>
-          </div>
-          <p className="mt-0.5 truncate text-muted">{[lead.person.title, lead.account?.name].filter(Boolean).join(" · ")}</p>
+          <p className="truncate text-[13px] font-semibold">{lead.person.name}</p>
+          <p className="fl-card__meta truncate">{[lead.person.title, lead.account?.name].filter(Boolean).join(" · ")}</p>
         </div>
       </div>
-      <div className="mt-2">
-        <FitBar score={lead.fitScore} />
-      </div>
-      <div className="mt-2 flex items-center gap-1.5">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted/60">owner</span>
+      <ScoreTier score={lead.fitScore} tier={lead.tier} />
+      <div className="flex items-center gap-1.5">
+        <span className="label text-ink-faint">owner</span>
         <ActorBadge kind={lead.ownerKind} />
       </div>
       {mover && (
-        <div className="mt-1 flex items-center gap-1.5" data-testid="last-moved">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-muted/60">moved</span>
+        <div className="flex items-center gap-1.5" data-testid="last-moved">
+          <span className="label text-ink-faint">moved</span>
           <ActorBadge kind={mover.actorKind} />
-          <span className="font-mono text-[10px] text-muted/60">{formatRelativeTime(mover.at)}</span>
+          <span className="font-mono text-[10px] text-ink-faint">{formatRelativeTime(mover.at)}</span>
         </div>
       )}
-      <label className="mt-2 flex items-center gap-1.5">
+      <label className="flex items-center gap-1.5">
         <span className="sr-only">Move {lead.person.name} to stage</span>
         <select
           value={lead.stage}
           onChange={(e) => onMove(lead.id, e.target.value as Stage)}
-          className="w-full rounded-sm border border-border-subtle bg-surface px-1.5 py-1 font-mono text-[11px] text-muted focus:border-accent focus:outline-none"
+          className="w-full rounded-md border border-line bg-surface-0 px-1.5 py-1 text-xs text-ink-muted focus:border-line-strong focus:outline-none"
           data-testid="stage-select"
         >
           {STAGES.map((s) => (

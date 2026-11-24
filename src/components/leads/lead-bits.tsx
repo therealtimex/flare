@@ -1,103 +1,61 @@
 "use client";
-// Small feature components for lead rows/cards: fit bar, tier chip, enrichment
-// badges and the citations popover.
+// Thin React wrappers over Jay's fl- classes for lead rows and cards:
+// ScoreTier, EnrichmentCell, Citation (in a popover) and the LinkedIn link.
 import { Popover } from "radix-ui";
-import { AtSign, ExternalLink, Link2, Quote } from "lucide-react";
+import { Link as LinkIcon } from "lucide-react";
 import { sourceLabel } from "@/lib/client/format";
-import type { EmailStatus, LeadView, Source, Tier } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import type { EmailStatus, Source, Tier } from "@/lib/types";
 
-export function FitBar({ score }: { score: number }) {
-  const s = Math.max(0, Math.min(100, Math.round(score)));
+/** Composite score 0–100 + tier chip (A solid, B outlined, C dashed). */
+export function ScoreTier({ score, tier }: { score: number; tier: Tier }) {
   return (
-    <div className="flex items-center gap-2" title={`Fit ${s}/100`}>
-      <div className="h-1.5 w-14 overflow-hidden rounded-full bg-border-subtle" role="meter" aria-label="Fit score" aria-valuemin={0} aria-valuemax={100} aria-valuenow={s}>
-        <div
-          className={cn("h-full rounded-full", s >= 80 ? "bg-accent" : s >= 60 ? "bg-warning" : "bg-muted/60")}
-          style={{ width: `${s}%` }}
-        />
-      </div>
-      <span className="w-6 font-mono text-xs tabular-nums">{s}</span>
-    </div>
-  );
-}
-
-export function TierChip({ tier }: { tier: Tier }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex size-5 items-center justify-center rounded-sm font-mono text-[11px] font-semibold",
-        tier === "A" && "bg-accent text-surface",
-        tier === "B" && "border border-accent/60 text-accent",
-        tier === "C" && "border border-border-subtle text-muted",
-      )}
-      data-tier={tier}
-      title={`Tier ${tier}`}
-    >
-      {tier}
+    <span className="fl-score" data-tier={tier}>
+      <span className="fl-score__num">{Math.round(score)}</span>
+      <span className={`fl-tier fl-tier--${tier.toLowerCase()}`}>Tier {tier}</span>
     </span>
   );
 }
 
-const EMAIL_LABEL: Record<EmailStatus, string> = { verified: "verified", pattern: "pattern", unverified: "none" };
+const EMAIL_WORD: Record<EmailStatus, string> = { verified: "Verified", pattern: "Pattern", unverified: "Not found" };
 
-/** Email enrichment badge; the title carries the source of the address or pattern. */
-export function EmailBadge({ lead }: { lead: LeadView }) {
-  const { email, emailStatus } = lead.person;
-  const src = lead.sources.find((s) => s.entityType === "person" && s.quote && /@|email|pattern/i.test(s.quote));
+/** Email enrichment (EnrichmentCell). The title carries the address and its source. */
+export function EmailCell({ email, status, sourceUrl }: { email: string | null; status: EmailStatus; sourceUrl?: string }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-sm px-1.5 py-px font-mono text-[10px] uppercase tracking-wider",
-        emailStatus === "verified" && "bg-success/10 text-success",
-        emailStatus === "pattern" && "bg-warning/10 text-warning",
-        emailStatus === "unverified" && "bg-surface-raised text-muted/60",
+    <span className="fl-enrich" title={[email ?? "No email found", sourceUrl ? `Source: ${sourceUrl}` : null].filter(Boolean).join("\n")}>
+      {status === "unverified" ? (
+        <span className="fl-badge" data-email-status={status}>
+          {EMAIL_WORD[status]}
+        </span>
+      ) : (
+        <span className="fl-verify" data-status={status} data-email-status={status}>
+          {EMAIL_WORD[status]}
+        </span>
       )}
-      title={[email ?? "No email found", src ? `Source: ${src.url}` : null].filter(Boolean).join("\n")}
-      data-email-status={emailStatus}
-    >
-      <AtSign className="size-3" aria-hidden />
-      {EMAIL_LABEL[emailStatus]}
     </span>
   );
 }
 
-export function LinkedInBadge({ url }: { url: string | null }) {
-  if (!url) {
-    return <span className="inline-flex items-center gap-1 rounded-sm bg-surface-raised px-1.5 py-px font-mono text-[10px] uppercase tracking-wider text-muted/60">no in</span>;
-  }
+export function LinkedInLink({ url }: { url: string | null }) {
+  if (!url) return <span className="text-ink-faint">—</span>;
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex items-center gap-1 rounded-sm bg-success/10 px-1.5 py-px font-mono text-[10px] uppercase tracking-wider text-success hover:underline"
-      title={url}
-    >
-      <Link2 className="size-3" aria-hidden />
-      in
+    <a className="fl-cite" href={url} target="_blank" rel="noreferrer" title={url}>
+      <LinkIcon className="size-3" aria-hidden />
+      LinkedIn
     </a>
   );
 }
 
 const ENTITY_ORDER = ["person", "account", "signal"];
 
+/** Numbered fl-cite chips in a popover; the trigger shows the source count. */
 export function CitationsPopover({ sources, label }: { sources: Source[]; label?: string }) {
   const sorted = [...sources].sort((a, b) => ENTITY_ORDER.indexOf(a.entityType) - ENTITY_ORDER.indexOf(b.entityType));
   return (
     <Popover.Root>
       <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "inline-flex items-center gap-1 rounded-sm border px-1.5 py-px font-mono text-[11px] tabular-nums",
-            sources.length ? "border-border-subtle text-muted hover:border-accent hover:text-accent" : "border-danger/40 text-danger",
-          )}
-          aria-label={`${sources.length} citations${label ? ` for ${label}` : ""}`}
-          data-testid="citations-trigger"
-        >
-          <Quote className="size-3" aria-hidden />
-          {sources.length}
+        <button type="button" className="fl-cite" aria-label={`${sources.length} sources${label ? ` for ${label}` : ""}`} data-testid="citations-trigger">
+          <b>{sources.length}</b>
+          {sources.length === 1 ? "source" : "sources"}
         </button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -105,25 +63,24 @@ export function CitationsPopover({ sources, label }: { sources: Source[]; label?
           align="end"
           sideOffset={6}
           collisionPadding={12}
-          className="z-50 max-h-80 w-96 overflow-y-auto rounded border border-border-subtle bg-surface-raised p-2 text-xs shadow-xl"
+          className="z-50 max-h-80 w-96 overflow-y-auto rounded-lg border border-line bg-surface-1 p-3"
+          style={{ boxShadow: "var(--shadow-overlay)" }}
           data-testid="citations-popover"
         >
-          <p className="px-1 pb-1.5 font-mono text-[10px] uppercase tracking-wider text-muted">Citations{label ? ` · ${label}` : ""}</p>
-          {sorted.length === 0 && <p className="px-1 py-2 text-danger">No sources. This record should be in quarantine.</p>}
-          <ul className="space-y-1">
-            {sorted.map((s) => (
-              <li key={s.id} className="rounded-sm border border-border-subtle bg-surface p-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted/60">{s.entityType}</span>
-                  <a href={s.url} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center gap-1 font-mono text-[11px] text-accent hover:underline">
-                    <ExternalLink className="size-3 shrink-0" aria-hidden />
-                    <span className="truncate">{sourceLabel(s.url)}</span>
-                  </a>
-                </div>
-                {s.quote && <p className="mt-1 leading-snug text-muted">“{s.quote}”</p>}
+          <p className="label pb-2 text-ink-muted">Sources{label ? ` · ${label}` : ""}</p>
+          {sorted.length === 0 && <p className="body-sm text-negative">No sources. This record should be in quarantine.</p>}
+          <ol className="grid gap-2">
+            {sorted.map((s, i) => (
+              <li key={s.id} className="body-sm">
+                <a className="fl-cite" href={s.url} target="_blank" rel="noreferrer">
+                  <b>{i + 1}</b>
+                  {sourceLabel(s.url)}
+                </a>{" "}
+                <span className="label text-ink-faint">{s.entityType}</span>
+                {s.quote && <p className="mt-1 text-ink-muted">“{s.quote}”</p>}
               </li>
             ))}
-          </ul>
+          </ol>
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

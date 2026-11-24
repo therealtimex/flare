@@ -1,130 +1,90 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  __resetMockStore,
-  decideExpansion,
-  decideMessage,
-  editMessage,
-  getCredits,
-  getIcp,
-  listActivity,
-  listLeads,
-  listOutbox,
-  moveStage,
-  runGtmAgent,
-  subscribe,
-  topUpCredits,
-} from "./api";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { decideExpansion, decideMessage, getProduct, listLeads, moveStage, runGtmAgent, saveProduct, subscribe, topUpCredits } from "./api";
 
-beforeEach(() => __resetMockStore());
+type Call = { url: string; method: string; body: unknown };
+function stub(respond: (c: Call) => Response) {
+  const calls: Call[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const c = { url, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined };
+      calls.push(c);
+      return respond(c);
+    }),
+  );
+  return calls;
+}
 afterEach(() => vi.unstubAllGlobals());
 
-describe("ICP and credits", () => {
-  it("decides an expansion, logs a rep activity and notifies subscribers", async () => {
+describe("reads", () => {
+  it("getProduct returns null on 404", async () => {
+    stub(() => Response.json({ error: "No product yet" }, { status: 404 }));
+    expect(await getProduct()).toBeNull();
+  });
+  it("listLeads returns the LeadsResponse and throws server errors", async () => {
+    stub(() => Response.json({ leads: [], quarantine: { accounts: 1, people: 0, signals: 0 }, quarantineCount: 1 }));
+    expect((await listLeads()).quarantineCount).toBe(1);
+    stub(() => Response.json({ error: "boom" }, { status: 500 }));
+    await expect(listLeads()).rejects.toThrow("boom");
+  });
+});
+
+describe("writes hit the right routes and invalidate", () => {
+  it("saveProduct PUTs an existing product and POSTs a new one", async () => {
+    const calls = stub(() => Response.json({ id: 1 }));
+    const input = { name: "X", description: "d", pricing: null, customers: ["a"] };
+    await saveProduct(1, input);
+    await saveProduct(null, input);
+    expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual(["PUT /api/products/1", "POST /api/products"]);
+    expect(calls[0].body).toEqual(input);
+  });
+
+  it("decideExpansion PATCHes with productId and the patch", async () => {
+    const calls = stub(() => Response.json({}));
     const seen = vi.fn();
     const off = subscribe(seen);
-    await decideExpansion("exp-1", "accepted");
+    await decideExpansion(7, "exp-1", "accepted", { segment: "S" });
     off();
-    const icp = await getIcp(1);
-    expect(icp?.expansions.find((e) => e.id === "exp-1")?.status).toBe("accepted");
-    const [latest] = await listActivity(1);
-    expect(latest.actorKind).toBe("rep");
-    expect(latest.summary).toMatch(/Accepted expansion/);
+    expect(calls[0]).toEqual({ url: "/api/icp/expansions/exp-1?productId=7", method: "PATCH", body: { status: "accepted", segment: "S" } });
     expect(seen).toHaveBeenCalledTimes(1);
   });
 
-  it("adjust patches segment text", async () => {
-    await decideExpansion("exp-2", "accepted", { segment: "Franchise operators (25+ locations)" });
-    const icp = await getIcp(1);
-    expect(icp?.expansions.find((e) => e.id === "exp-2")?.segment).toBe("Franchise operators (25+ locations)");
-    expect((await listActivity(1))[0].summary).toMatch(/Adjusted/);
+  it("decideMessage sends status + edits as rep; 402 surfaces as an error and still invalidates", async () => {
+    const calls = stub(() => Response.json({}));
+    await decideMessage(3, "approved", { subject: "s", body: "b" });
+    expect(calls[0]).toEqual({ url: "/api/messages/3", method: "PATCH", body: { subject: "s", body: "b", status: "approved", decidedBy: "rep" } });
+    stub(() => Response.json({ error: "Out of credits" }, { status: 402 }));
+    const seen = vi.fn();
+    const off = subscribe(seen);
+    await expect(decideMessage(3, "approved")).rejects.toThrow("Out of credits");
+    off();
+    expect(seen).toHaveBeenCalled();
   });
 
-  it("rejects unknown expansions", async () => {
-    await expect(decideExpansion("nope", "dismissed")).rejects.toThrow(/Unknown expansion/);
-  });
-
-  it("tops up credits", async () => {
-    const before = (await getCredits()).balance;
-    const after = await topUpCredits(100);
-    expect(after.balance).toBe(before + 100);
-    expect(after.allotment).toBeGreaterThanOrEqual(after.balance);
-  });
-});
-
-describe("leads", () => {
-  it("lists leads best fit first with citations attached", async () => {
-    const leads = await listLeads();
-    expect(leads.length).toBeGreaterThan(0);
-    for (let i = 1; i < leads.length; i++) expect(leads[i - 1].fitScore).toBeGreaterThanOrEqual(leads[i].fitScore);
-    expect(leads.every((l) => l.sources.length > 0)).toBe(true);
-  });
-
-  it("moveStage changes stage and records a rep move with from/to", async () => {
-    await moveStage(3, "contacted");
-    expect((await listLeads()).find((l) => l.id === 3)?.stage).toBe("contacted");
-    const [a] = await listActivity(1);
-    expect(a).toMatchObject({ actorKind: "rep", tool: "move_stage", leadId: 3, data: { from: "matched", to: "contacted" } });
-  });
-});
-
-describe("outbox HITL gate", () => {
-  it("lists drafts with lead and signal context", async () => {
-    const items = await listOutbox();
-    const first = items.find((m) => m.id === 1)!;
-    expect(first.lead.person.name).toBeTruthy();
-    expect(first.signalSummaries.map((s) => s.id)).toEqual([1, 2]);
-  });
-
-  it("approve applies edits, records the rep decision, and never marks sent", async () => {
-    const m = await decideMessage(1, "approved", { subject: "Edited", body: "New body" });
-    expect(m).toMatchObject({ status: "approved", subject: "Edited", body: "New body", decidedBy: "rep" });
-    expect(m.decidedAt).toBeTruthy();
-    expect((await listOutbox()).some((x) => x.status === "sent")).toBe(false);
-    const [a] = await listActivity(1);
-    expect(a).toMatchObject({ actorKind: "rep", tool: "approve_message", entityId: 1 });
-  });
-
-  it("reject parks the draft; decided messages can't be re-decided or edited", async () => {
-    await decideMessage(2, "rejected");
-    await expect(decideMessage(2, "approved")).rejects.toThrow(/already rejected/);
-    await expect(editMessage(2, { subject: "x", body: "y" })).rejects.toThrow(/only drafts/);
-  });
-
-  it("editMessage saves a draft without deciding it", async () => {
-    const m = await editMessage(3, { subject: null, body: "Shorter note" });
-    expect(m).toMatchObject({ status: "draft", body: "Shorter note", decidedBy: null });
+  it("moveStage and topUpCredits", async () => {
+    const calls = stub(() => Response.json({}));
+    await moveStage(4, "replied");
+    await topUpCredits(100);
+    expect(calls).toEqual([
+      { url: "/api/leads/4/stage", method: "PATCH", body: { stage: "replied" } },
+      { url: "/api/credits/topup", method: "POST", body: { amount: 100 } },
+    ]);
   });
 });
 
 describe("runGtmAgent", () => {
   const base = "http://localhost:3020";
-  const stub = (impl: () => Promise<Response>) => vi.stubGlobal("fetch", vi.fn(impl));
-
-  it("reports dispatched when the endpoint dispatches, and logs a run row", async () => {
-    stub(async () => Response.json({ mode: "dispatched", brief: "B" }));
+  it("maps dispatched and fallback responses", async () => {
+    stub(() => Response.json({ mode: "dispatched", dispatched: true, brief: "B", command: "c" }));
     expect(await runGtmAgent(1, base)).toEqual({ ok: true, mode: "dispatched", brief: "B" });
-    expect((await listActivity(1))[0]).toMatchObject({ tool: "run_dispatch", actorKind: "rep" });
-  });
-
-  it("passes through server fallback with its brief", async () => {
-    stub(async () => Response.json({ mode: "fallback", brief: "B2", reason: "no cli" }));
+    stub(() => Response.json({ mode: "fallback", dispatched: false, brief: "B2", reason: "no cli", command: "c" }));
     expect(await runGtmAgent(1, base)).toEqual({ ok: true, mode: "fallback", brief: "B2", reason: "no cli" });
-    expect((await listActivity(1))[0].summary).toMatch(/fallback/);
   });
-
-  it("falls back to a local brief on 404 or network error", async () => {
-    stub(async () => new Response("nf", { status: 404 }));
-    const r = await runGtmAgent(1, base);
-    expect(r.ok && r.mode).toBe("fallback");
-    if (r.ok) expect(r.brief).toContain("product 1");
-    stub(async () => {
-      throw new TypeError("network");
-    });
-    expect((await runGtmAgent(1, base)).ok).toBe(true);
-  });
-
-  it("surfaces credit gate (402) as an error", async () => {
-    stub(async () => Response.json({ error: "Out of credits" }, { status: 402 }));
+  it("402 is an error; network failure falls back to a local brief", async () => {
+    stub(() => Response.json({ error: "Out of credits" }, { status: 402 }));
     expect(await runGtmAgent(1, base)).toEqual({ ok: false, error: "Out of credits" });
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("network"))));
+    const r = await runGtmAgent(1, base);
+    expect(r.ok && r.mode === "fallback" && r.brief.includes("product 1")).toBe(true);
   });
 });
